@@ -1,9 +1,10 @@
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 use tracing_appender::rolling;
+use tracing_appender::non_blocking::WorkerGuard;
 
-pub fn init_logging() {
+pub fn init_logging() -> WorkerGuard {
     let file_appender = rolling::daily("logs", "manifoldr.log");
-    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
     let console_layer = fmt::layer()
         .with_target(false)
@@ -24,5 +25,5 @@ pub fn init_logging() {
         .with(file_layer)
         .init();
 
-    // Box::leak(Box::new(_guard)); // Keep the guard alive for the duration of the program
+    guard
 }

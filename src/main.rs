@@ -15,7 +15,7 @@ use tracing::{info, instrument};
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenv().ok();
-    logging::init_logging();
+    let _log_guard = logging::init_logging();
 
     let cli = Cli::parse();
     
