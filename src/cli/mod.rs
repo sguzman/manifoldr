@@ -40,10 +40,19 @@ pub enum UserCommands {
         /// Username or ID of the user
         username_or_id: String,
     },
-    /// Get a user's portfolio metrics
-    Portfolio {
-        /// User ID
+    /// Get user portfolio metrics
+    Portfolio { user_id: String },
+    /// Get user portfolio history
+    History { 
         user_id: String,
+        #[arg(short, long, default_value = "allTime")]
+        period: String,
+    },
+    /// Get user's current positions
+    Positions {
+        user_id: String,
+        #[arg(short, long, default_value_t = 10)]
+        limit: i32,
     },
 }
 
@@ -51,7 +60,7 @@ pub enum UserCommands {
 pub enum MarketCommands {
     /// List markets
     List {
-        #[arg(short, long, default_value = "10")]
+        #[arg(short, long, default_value_t = 10)]
         limit: i32,
         #[arg(short, long)]
         sort: Option<String>,
@@ -64,7 +73,7 @@ pub enum MarketCommands {
     Search {
         /// Search term
         term: String,
-        #[arg(short, long, default_value = "10")]
+        #[arg(short, long, default_value_t = 10)]
         limit: i32,
         #[arg(short, long)]
         sort: Option<String>,
@@ -77,6 +86,14 @@ pub enum MarketCommands {
         id_or_slug: String,
         #[arg(short, long)]
         slug: bool,
+    },
+    /// Get market positions
+    Positions {
+        market_id: String,
+        #[arg(short, long)]
+        top: Option<i32>,
+        #[arg(short, long)]
+        bottom: Option<i32>,
     },
 }
 

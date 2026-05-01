@@ -53,6 +53,20 @@ async fn handle_user_command(client: ManifoldClient, command: UserCommands) -> R
             let metrics = client.get_user_portfolio(&user_id).await?;
             println!("{}", serde_json::to_string_pretty(&metrics)?);
         }
+        UserCommands::History { user_id, period } => {
+            info!(user_id, period, "Fetching portfolio history");
+            let history = client.get_user_portfolio_history(&user_id, &period).await?;
+            utils::print_portfolio_history_table(&history);
+        }
+        UserCommands::Positions { user_id, limit } => {
+            info!(user_id, limit, "Fetching user positions");
+            let response = client.get_user_contract_metrics(&user_id, limit).await?;
+            let mut all_metrics = Vec::new();
+            for metrics in response.metrics_by_contract.values() {
+                all_metrics.extend(metrics.clone());
+            }
+            utils::print_positions_table(&all_metrics);
+        }
     }
     Ok(())
 }
@@ -78,6 +92,11 @@ async fn handle_market_command(client: ManifoldClient, command: MarketCommands) 
                 client.get_market_by_id(&id_or_slug).await?
             };
             println!("{}", serde_json::to_string_pretty(&market)?);
+        }
+        MarketCommands::Positions { market_id, top, bottom } => {
+            info!(market_id, ?top, ?bottom, "Fetching market positions");
+            let positions = client.get_market_positions(&market_id, top, bottom).await?;
+            utils::print_positions_table(&positions);
         }
     }
     Ok(())

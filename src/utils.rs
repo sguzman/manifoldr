@@ -74,3 +74,51 @@ pub fn print_bets_table(bets: &[Bet]) {
 
     println!("{}", table);
 }
+pub fn print_portfolio_history_table(history: &[PortfolioMetrics]) {
+    let mut table = Table::new();
+    table.set_content_arrangement(ContentArrangement::Dynamic);
+
+    table.add_row(vec![
+        Cell::new("Timestamp").add_attribute(Attribute::Bold).fg(Color::Cyan),
+        Cell::new("Investment").add_attribute(Attribute::Bold).fg(Color::Cyan),
+        Cell::new("Balance").add_attribute(Attribute::Bold).fg(Color::Cyan),
+        Cell::new("Profit").add_attribute(Attribute::Bold).fg(Color::Cyan),
+    ]);
+
+    for h in history {
+        let profit = h.profit.map(|p| format!("{:.2}", p)).unwrap_or_else(|| "N/A".to_string());
+        table.add_row(vec![
+            &h.timestamp.to_string(), // Could format this better but keeping it simple
+            &format!("{:.2}", h.investment_value),
+            &format!("{:.2}", h.balance),
+            &profit,
+        ]);
+    }
+
+    println!("{}", table);
+}
+
+pub fn print_positions_table(positions: &[ContractMetric]) {
+    let mut table = Table::new();
+    table.set_content_arrangement(ContentArrangement::Dynamic);
+
+    table.add_row(vec![
+        Cell::new("Market ID").add_attribute(Attribute::Bold).fg(Color::Cyan),
+        Cell::new("Invested").add_attribute(Attribute::Bold).fg(Color::Cyan),
+        Cell::new("Profit").add_attribute(Attribute::Bold).fg(Color::Cyan),
+        Cell::new("Profit %").add_attribute(Attribute::Bold).fg(Color::Cyan),
+        Cell::new("User").add_attribute(Attribute::Bold).fg(Color::Cyan),
+    ]);
+
+    for p in positions {
+        table.add_row(vec![
+            &p.contract_id,
+            &format!("{:.2}", p.invested),
+            &format!("{:.2}", p.profit),
+            &format!("{:.2}%", p.profit_percent),
+            &p.user_username,
+        ]);
+    }
+
+    println!("{}", table);
+}

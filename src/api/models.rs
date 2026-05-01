@@ -114,3 +114,26 @@ pub struct LivePortfolioMetrics {
     pub metrics: PortfolioMetrics,
     pub daily_profit: f64,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContractMetric {
+    pub contract_id: String,
+    pub invested: f64,
+    pub loan: f64,
+    pub payout: f64,
+    pub profit: f64,
+    pub profit_percent: f64,
+    pub total_shares: std::collections::HashMap<String, f64>,
+    pub user_id: String,
+    pub user_username: String,
+    pub user_name: String,
+    pub last_bet_time: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserContractMetricsResponse {
+    pub metrics_by_contract: std::collections::HashMap<String, Vec<ContractMetric>>,
+    pub contracts: Vec<LiteMarket>,
+}

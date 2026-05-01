@@ -89,6 +89,28 @@ impl ManifoldClient {
         self.get("get-user-portfolio", Some(&[("userId", user_id.to_string())])).await
     }
 
+    pub async fn get_user_portfolio_history(&self, user_id: &str, period: &str) -> Result<Vec<PortfolioMetrics>> {
+        self.get("get-user-portfolio-history", Some(&[
+            ("userId", user_id.to_string()),
+            ("period", period.to_string()),
+        ])).await
+    }
+
+    pub async fn get_user_contract_metrics(&self, user_id: &str, limit: i32) -> Result<UserContractMetricsResponse> {
+        self.get("get-user-contract-metrics-with-contracts", Some(&[
+            ("userId", user_id.to_string()),
+            ("limit", limit.to_string()),
+        ])).await
+    }
+
+    pub async fn get_market_positions(&self, market_id: &str, top: Option<i32>, bottom: Option<i32>) -> Result<Vec<ContractMetric>> {
+        let mut query = Vec::new();
+        if let Some(t) = top { query.push(("top", t.to_string())); }
+        if let Some(b) = bottom { query.push(("bottom", b.to_string())); }
+        
+        self.get(&format!("market/{}/positions", market_id), Some(&query)).await
+    }
+
     // Market Endpoints
     pub async fn list_markets(&self, limit: Option<i32>, sort: Option<&str>, order: Option<&str>, before: Option<&str>) -> Result<Vec<LiteMarket>> {
         let mut query = Vec::new();
