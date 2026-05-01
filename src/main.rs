@@ -51,7 +51,7 @@ async fn handle_user_command(client: ManifoldClient, command: UserCommands) -> R
         UserCommands::Portfolio { user_id } => {
             info!(user_id, "Fetching portfolio metrics");
             let metrics = client.get_user_portfolio(&user_id).await?;
-            println!("{:#?}", metrics);
+            println!("{}", serde_json::to_string_pretty(&metrics)?);
         }
     }
     Ok(())
@@ -77,7 +77,7 @@ async fn handle_market_command(client: ManifoldClient, command: MarketCommands) 
             } else {
                 client.get_market_by_id(&id_or_slug).await?
             };
-            println!("{:#?}", market);
+            println!("{}", serde_json::to_string_pretty(&market)?);
         }
     }
     Ok(())
@@ -89,7 +89,7 @@ async fn handle_bet_command(client: ManifoldClient, command: BetCommands) -> Res
         BetCommands::Place { market_id, amount, outcome } => {
             info!(market_id, amount, outcome, "Placing bet");
             let result = client.place_bet(&market_id, amount, &outcome).await?;
-            println!("Bet placed successfully: {:#?}", result);
+            println!("{}", serde_json::to_string_pretty(&result)?);
         }
         BetCommands::List { user_id, market_id, limit } => {
             info!(?user_id, ?market_id, limit, "Listing bets");
