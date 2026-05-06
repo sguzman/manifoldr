@@ -112,26 +112,51 @@ pub fn print_positions_table(positions: &[ContractMetric]) {
         Cell::new("User").add_attribute(Attribute::Bold).fg(Color::Cyan),
     ]);
 
+    let mut max_pos = 0.01; // Avoid div by zero
+    let mut min_neg = -0.01;
+
+    for p in positions {
+        if p.profit > max_pos { max_pos = p.profit; }
+        if p.profit < min_neg { min_neg = p.profit; }
+    }
+
     let mut total_invested = 0.0;
     let mut total_profit = 0.0;
 
     for p in positions {
         total_invested += p.invested;
         total_profit += p.profit;
+
+        let color = if p.profit > 0.0 {
+            let ratio = (p.profit / max_pos).min(1.0);
+            // From White (255,255,255) to Green (0,255,0)
+            let other = (255.0 * (1.0 - ratio)) as u8;
+            Color::Rgb { r: other, g: 255, b: other }
+        } else if p.profit < 0.0 {
+            let ratio = (p.profit / min_neg).min(1.0);
+            // From White (255,255,255) to Red (255,0,0)
+            let other = (255.0 * (1.0 - ratio)) as u8;
+            Color::Rgb { r: 255, g: other, b: other }
+        } else {
+            Color::Reset
+        };
+
         table.add_row(vec![
             Cell::new(&p.contract_id),
             Cell::new(&format!("{:.2}", p.invested)),
-            Cell::new(&format!("{:.2}", p.profit)),
-            Cell::new(&format!("{:.2}%", p.profit_percent)),
+            Cell::new(&format!("{:.2}", p.profit)).fg(color),
+            Cell::new(&format!("{:.2}%", p.profit_percent)).fg(color),
             Cell::new(p.user_username.as_deref().unwrap_or("N/A")),
         ]);
     }
 
+    let total_color = if total_profit > 0.0 { Color::Green } else if total_profit < 0.0 { Color::Red } else { Color::Reset };
+
     table.add_row(vec![
         Cell::new("TOTAL").add_attribute(Attribute::Bold),
         Cell::new(&format!("{:.2}", total_invested)).add_attribute(Attribute::Bold).fg(Color::Yellow),
-        Cell::new(&format!("{:.2}", total_profit)).add_attribute(Attribute::Bold).fg(if total_profit >= 0.0 { Color::Green } else { Color::Red }),
-        Cell::new(&format!("{:.2}%", (total_profit / total_invested) * 100.0)).add_attribute(Attribute::Bold),
+        Cell::new(&format!("{:.2}", total_profit)).add_attribute(Attribute::Bold).fg(total_color),
+        Cell::new(&format!("{:.2}%", (total_profit / total_invested.max(1.0)) * 100.0)).add_attribute(Attribute::Bold).fg(total_color),
         Cell::new(""),
     ]);
 
