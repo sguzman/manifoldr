@@ -126,6 +126,7 @@ pub struct ContractMetric {
     pub profit: Option<f64>,
     pub profit_percent: Option<f64>,
     pub total_shares: std::collections::HashMap<String, Option<f64>>,
+    pub total_spent: std::collections::HashMap<String, Option<f64>>,
     pub user_id: String,
     pub user_username: Option<String>,
     pub user_name: Option<String>,

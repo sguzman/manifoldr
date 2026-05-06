@@ -150,7 +150,7 @@ pub fn print_positions_table(
 
     let mut headers = vec![
         Cell::new("Market").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Shares").add_attribute(Attribute::Bold).fg(Color::Cyan),
+        Cell::new("Outcome").add_attribute(Attribute::Bold).fg(Color::Cyan),
         Cell::new("Invested").add_attribute(Attribute::Bold).fg(Color::Cyan),
         Cell::new("Profit").add_attribute(Attribute::Bold).fg(Color::Cyan),
         Cell::new("Profit %").add_attribute(Attribute::Bold).fg(Color::Cyan),
@@ -178,9 +178,14 @@ pub fn print_positions_table(
 
     for group in &filtered_groups {
         for p in group {
-            let profit = p.profit.unwrap_or_default();
-            if profit > max_pos { max_pos = profit; }
-            if profit < min_neg { min_neg = profit; }
+            for (outcome, value) in &p.total_shares {
+                let val = value.unwrap_or_default();
+                if val.abs() < 0.1 { continue; }
+                let invested = p.total_spent.get(outcome).unwrap_or(&None).unwrap_or_default();
+                let profit = val - invested;
+                if profit > max_pos { max_pos = profit; }
+                if profit < min_neg { min_neg = profit; }
+            }
         }
     }
 
@@ -202,8 +207,27 @@ pub fn print_positions_table(
     }
 
     for group in display_groups {
-        for (i, p) in group.iter().enumerate() {
-            let profit = p.profit.unwrap_or_default();
+        let mut row_in_group = 0;
+        
+        // Collect all individual positions from all metrics in the group
+        let mut individual_positions = Vec::new();
+        for p in group {
+            let mut sorted_outcomes: Vec<_> = p.total_shares.keys().collect();
+            sorted_outcomes.sort();
+            
+            for outcome in sorted_outcomes {
+                let value = p.total_shares.get(outcome).unwrap_or(&None).unwrap_or_default();
+                if value.abs() < 0.1 { continue; }
+                
+                let invested = p.total_spent.get(outcome).unwrap_or(&None).unwrap_or_default();
+                let profit = value - invested;
+                let profit_pct = if invested > 0.1 { (profit / invested) * 100.0 } else { 0.0 };
+                
+                individual_positions.push((outcome, value, invested, profit, profit_pct, p));
+            }
+        }
+
+        for (outcome, _value, invested, profit, profit_pct, p) in individual_positions {
             let color = if profit > 0.0 {
                 let ratio = (profit / max_pos).min(1.0).powf(0.6);
                 Color::Rgb { 
@@ -222,7 +246,7 @@ pub fn print_positions_table(
                 Color::Reset
             };
 
-            let mut market_display = if i == 0 {
+            let mut market_display = if row_in_group == 0 {
                 titles
                     .and_then(|m| m.get(&p.contract_id))
                     .cloned()
@@ -238,18 +262,16 @@ pub fn print_positions_table(
                 }
             }
 
-            let shares_display = format_shares(&p.total_shares);
-
             let mut row = vec![
                 Cell::new(market_display),
-                Cell::new(shares_display),
-                Cell::new(&format!("{:.2}", p.invested.unwrap_or_default())),
-                Cell::new(&format!("{:.2}", p.profit.unwrap_or_default())).fg(color),
-                Cell::new(&format!("{:.2}%", p.profit_percent.unwrap_or_default())).fg(color),
+                Cell::new(outcome), // Just the outcome name (e.g. YES, NO, or Answer ID)
+                Cell::new(&format!("{:.2}", invested)),
+                Cell::new(&format!("{:.2}", profit)).fg(color),
+                Cell::new(&format!("{:.2}%", profit_pct)).fg(color),
             ];
 
             if show_user {
-                let user_display = if i == 0 {
+                let user_display = if row_in_group == 0 {
                     p.user_username.as_deref().unwrap_or(&p.user_id)
                 } else {
                     ""
@@ -258,9 +280,8 @@ pub fn print_positions_table(
             }
 
             table.add_row(row);
+            row_in_group += 1;
         }
-        // Add a small separator or empty line between groups if it has multiple rows?
-        // Actually, comfy-table handles it.
     }
 
     let total_color = if total_profit > 0.0 { Color::Green } else if total_profit < 0.0 { Color::Red } else { Color::Reset };
