@@ -128,15 +128,19 @@ pub fn print_positions_table(positions: &[ContractMetric]) {
         total_profit += p.profit;
 
         let color = if p.profit > 0.0 {
-            let ratio = (p.profit / max_pos).min(1.0);
-            // From White (255,255,255) to Green (0,255,0)
-            let other = (255.0 * (1.0 - ratio)) as u8;
-            Color::Rgb { r: other, g: 255, b: other }
+            let ratio = (p.profit / max_pos).min(1.0).powf(0.6);
+            Color::Rgb { 
+                r: (200.0 * (1.0 - ratio)) as u8, 
+                g: (200.0 + 55.0 * ratio) as u8, 
+                b: (200.0 * (1.0 - ratio)) as u8 
+            }
         } else if p.profit < 0.0 {
-            let ratio = (p.profit / min_neg).min(1.0);
-            // From White (255,255,255) to Red (255,0,0)
-            let other = (255.0 * (1.0 - ratio)) as u8;
-            Color::Rgb { r: 255, g: other, b: other }
+            let ratio = (p.profit / min_neg).min(1.0).powf(0.6);
+            Color::Rgb { 
+                r: (200.0 + 55.0 * ratio) as u8, 
+                g: (200.0 * (1.0 - ratio)) as u8, 
+                b: (200.0 * (1.0 - ratio)) as u8 
+            }
         } else {
             Color::Reset
         };
