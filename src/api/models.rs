@@ -130,6 +130,7 @@ pub struct ContractMetric {
     pub user_username: Option<String>,
     pub user_name: Option<String>,
     pub last_bet_time: Option<i64>,
+    pub answer_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

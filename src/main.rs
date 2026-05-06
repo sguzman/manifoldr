@@ -83,7 +83,8 @@ async fn handle_user_command(client: ManifoldClient, command: UserCommands) -> R
 
             loop {
                 if watch.is_some() {
-                    print!("\x1B[2J\x1B[1;1H"); // Clear screen and move cursor to top
+                    print!("\x1B[2J\x1B[1;1H");
+                    println!("Monitoring positions for: {} (Last update: {})", id, chrono::Local::now().format("%H:%M:%S"));
                 }
 
                 info!(id, limit, "Fetching user positions");
