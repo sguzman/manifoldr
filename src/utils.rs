@@ -40,11 +40,13 @@ pub fn print_markets_table(markets: &[LiteMarket]) {
             "NO".to_string()
         };
 
+        let volume = m.volume.map(|v| format!("{:.0}", v)).unwrap_or_else(|| "N/A".to_string());
+
         table.add_row(vec![
             &m.id,
             &m.question,
             &prob,
-            &format!("{:.0}", m.volume),
+            &volume,
             &resolved,
         ]);
     }
