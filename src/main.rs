@@ -31,6 +31,25 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+async fn resolve_user_id(client: &ManifoldClient, identifier: Option<String>) -> Result<String> {
+    match identifier {
+        Some(id_or_username) => {
+            // Try as username first
+            match client.get_user_by_username(&id_or_username).await {
+                Ok(user) => Ok(user.id),
+                Err(_) => {
+                    // If username fails, assume it's already an ID
+                    Ok(id_or_username)
+                }
+            }
+        }
+        None => {
+            let me = client.get_me().await?;
+            Ok(me.id)
+        }
+    }
+}
+
 #[instrument(skip(client))]
 async fn handle_user_command(client: ManifoldClient, command: UserCommands) -> Result<()> {
     match command {
@@ -41,44 +60,34 @@ async fn handle_user_command(client: ManifoldClient, command: UserCommands) -> R
         }
         UserCommands::Get { username_or_id } => {
             info!(username_or_id, "Fetching user info");
-            let user = if username_or_id.len() == 22 { // Typical ID length
-                client.get_user_by_id(&username_or_id).await?
-            } else {
-                client.get_user_by_username(&username_or_id).await?
+            let user = match client.get_user_by_username(&username_or_id).await {
+                Ok(user) => user,
+                Err(_) => client.get_user_by_id(&username_or_id).await?,
             };
             utils::print_user_table(&user);
         }
         UserCommands::Portfolio { user_id } => {
-            let user_id = match user_id {
-                Some(id) => id,
-                None => client.get_me().await?.id,
-            };
-            info!(user_id, "Fetching portfolio metrics");
-            let metrics = client.get_user_portfolio(&user_id).await?;
+            let id = resolve_user_id(&client, user_id).await?;
+            info!(id, "Fetching portfolio metrics");
+            let metrics = client.get_user_portfolio(&id).await?;
             println!("{}", serde_json::to_string_pretty(&metrics)?);
         }
         UserCommands::History { user_id, period } => {
-            let user_id = match user_id {
-                Some(id) => id,
-                None => client.get_me().await?.id,
-            };
-            info!(user_id, period, "Fetching portfolio history");
-            let history = client.get_user_portfolio_history(&user_id, &period).await?;
+            let id = resolve_user_id(&client, user_id).await?;
+            info!(id, period, "Fetching portfolio history");
+            let history = client.get_user_portfolio_history(&id, &period).await?;
             utils::print_portfolio_history_table(&history);
         }
         UserCommands::Positions { user_id, limit, watch } => {
-            let user_id = match user_id {
-                Some(id) => id,
-                None => client.get_me().await?.id,
-            };
+            let id = resolve_user_id(&client, user_id).await?;
 
             loop {
                 if watch.is_some() {
                     print!("\x1B[2J\x1B[1;1H"); // Clear screen and move cursor to top
                 }
 
-                info!(user_id, limit, "Fetching user positions");
-                let response = client.get_user_contract_metrics(&user_id, limit).await?;
+                info!(id, limit, "Fetching user positions");
+                let response = client.get_user_contract_metrics(&id, limit).await?;
                 let mut all_metrics = Vec::new();
                 for metrics in response.metrics_by_contract.values() {
                     all_metrics.extend(metrics.clone());

@@ -41,15 +41,20 @@ pub enum UserCommands {
         username_or_id: String,
     },
     /// Get user portfolio metrics
-    Portfolio { user_id: Option<String> },
+    Portfolio { 
+        /// Username or ID of the user
+        user_id: Option<String> 
+    },
     /// Get user portfolio history
     History { 
+        /// Username or ID of the user
         user_id: Option<String>,
         #[arg(short, long, default_value = "allTime")]
         period: String,
     },
     /// Get user's current positions
     Positions {
+        /// Username or ID of the user
         user_id: Option<String>,
         #[arg(short, long, default_value_t = 10)]
         limit: i32,
