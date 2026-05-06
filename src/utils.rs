@@ -110,7 +110,12 @@ pub fn print_positions_table(positions: &[ContractMetric]) {
         Cell::new("User").add_attribute(Attribute::Bold).fg(Color::Cyan),
     ]);
 
+    let mut total_invested = 0.0;
+    let mut total_profit = 0.0;
+
     for p in positions {
+        total_invested += p.invested;
+        total_profit += p.profit;
         table.add_row(vec![
             &p.contract_id,
             &format!("{:.2}", p.invested),
@@ -119,6 +124,14 @@ pub fn print_positions_table(positions: &[ContractMetric]) {
             &p.user_username,
         ]);
     }
+
+    table.add_row(vec![
+        Cell::new("TOTAL").add_attribute(Attribute::Bold),
+        Cell::new(&format!("{:.2}", total_invested)).add_attribute(Attribute::Bold).fg(Color::Yellow),
+        Cell::new(&format!("{:.2}", total_profit)).add_attribute(Attribute::Bold).fg(if total_profit >= 0.0 { Color::Green } else { Color::Red }),
+        Cell::new(&format!("{:.2}%", (total_profit / total_invested) * 100.0)).add_attribute(Attribute::Bold),
+        Cell::new(""),
+    ]);
 
     println!("{}", table);
 }

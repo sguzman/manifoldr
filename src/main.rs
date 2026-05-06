@@ -49,23 +49,52 @@ async fn handle_user_command(client: ManifoldClient, command: UserCommands) -> R
             utils::print_user_table(&user);
         }
         UserCommands::Portfolio { user_id } => {
+            let user_id = match user_id {
+                Some(id) => id,
+                None => client.get_me().await?.id,
+            };
             info!(user_id, "Fetching portfolio metrics");
             let metrics = client.get_user_portfolio(&user_id).await?;
             println!("{}", serde_json::to_string_pretty(&metrics)?);
         }
         UserCommands::History { user_id, period } => {
+            let user_id = match user_id {
+                Some(id) => id,
+                None => client.get_me().await?.id,
+            };
             info!(user_id, period, "Fetching portfolio history");
             let history = client.get_user_portfolio_history(&user_id, &period).await?;
             utils::print_portfolio_history_table(&history);
         }
-        UserCommands::Positions { user_id, limit } => {
-            info!(user_id, limit, "Fetching user positions");
-            let response = client.get_user_contract_metrics(&user_id, limit).await?;
-            let mut all_metrics = Vec::new();
-            for metrics in response.metrics_by_contract.values() {
-                all_metrics.extend(metrics.clone());
+        UserCommands::Positions { user_id, limit, watch } => {
+            let user_id = match user_id {
+                Some(id) => id,
+                None => client.get_me().await?.id,
+            };
+
+            loop {
+                if watch.is_some() {
+                    print!("\x1B[2J\x1B[1;1H"); // Clear screen and move cursor to top
+                }
+
+                info!(user_id, limit, "Fetching user positions");
+                let response = client.get_user_contract_metrics(&user_id, limit).await?;
+                let mut all_metrics = Vec::new();
+                for metrics in response.metrics_by_contract.values() {
+                    all_metrics.extend(metrics.clone());
+                }
+                
+                // Sort by profit descending
+                all_metrics.sort_by(|a, b| b.profit.partial_cmp(&a.profit).unwrap());
+                
+                utils::print_positions_table(&all_metrics);
+
+                if let Some(interval) = watch {
+                    tokio::time::sleep(std::time::Duration::from_secs(interval)).await;
+                } else {
+                    break;
+                }
             }
-            utils::print_positions_table(&all_metrics);
         }
     }
     Ok(())
