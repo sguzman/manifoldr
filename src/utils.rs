@@ -117,11 +117,11 @@ pub fn print_positions_table(positions: &[ContractMetric]) {
         total_invested += p.invested;
         total_profit += p.profit;
         table.add_row(vec![
-            &p.contract_id,
-            &format!("{:.2}", p.invested),
-            &format!("{:.2}", p.profit),
-            &format!("{:.2}%", p.profit_percent),
-            &p.user_username,
+            Cell::new(&p.contract_id),
+            Cell::new(&format!("{:.2}", p.invested)),
+            Cell::new(&format!("{:.2}", p.profit)),
+            Cell::new(&format!("{:.2}%", p.profit_percent)),
+            Cell::new(p.user_username.as_deref().unwrap_or("N/A")),
         ]);
     }
 

@@ -84,6 +84,7 @@ pub struct Bet {
     pub is_redemption: Option<bool>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Group {
@@ -126,9 +127,9 @@ pub struct ContractMetric {
     pub profit_percent: f64,
     pub total_shares: std::collections::HashMap<String, f64>,
     pub user_id: String,
-    pub user_username: String,
-    pub user_name: String,
-    pub last_bet_time: i64,
+    pub user_username: Option<String>,
+    pub user_name: Option<String>,
+    pub last_bet_time: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
