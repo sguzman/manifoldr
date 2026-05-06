@@ -120,12 +120,12 @@ pub struct LivePortfolioMetrics {
 #[serde(rename_all = "camelCase")]
 pub struct ContractMetric {
     pub contract_id: String,
-    pub invested: f64,
-    pub loan: f64,
-    pub payout: f64,
-    pub profit: f64,
-    pub profit_percent: f64,
-    pub total_shares: std::collections::HashMap<String, f64>,
+    pub invested: Option<f64>,
+    pub loan: Option<f64>,
+    pub payout: Option<f64>,
+    pub profit: Option<f64>,
+    pub profit_percent: Option<f64>,
+    pub total_shares: std::collections::HashMap<String, Option<f64>>,
     pub user_id: String,
     pub user_username: Option<String>,
     pub user_name: Option<String>,

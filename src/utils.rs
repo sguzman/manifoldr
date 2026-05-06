@@ -1,4 +1,5 @@
 use comfy_table::{Attribute, Cell, Color, Table, ContentArrangement};
+use comfy_table::presets::UTF8_FULL;
 use crate::api::models::*;
 
 pub fn print_user_table(user: &User) {
@@ -100,25 +101,54 @@ pub fn print_portfolio_history_table(history: &[PortfolioMetrics]) {
     println!("{}", table);
 }
 
+fn format_shares(shares: &std::collections::HashMap<String, Option<f64>>) -> String {
+    let mut parts = Vec::new();
+    let mut sorted_keys: Vec<_> = shares.keys().collect();
+    sorted_keys.sort();
+    
+    for outcome in sorted_keys {
+        if let Some(Some(amt)) = shares.get(outcome) {
+            if amt.abs() > 0.1 {
+                parts.push(format!("{}: {:.0}", outcome, amt));
+            }
+        }
+    }
+    
+    if parts.is_empty() {
+        "-".to_string()
+    } else {
+        parts.join(", ")
+    }
+}
+
 pub fn print_positions_table(
-    positions: &[ContractMetric], 
+    position_groups: &[Vec<ContractMetric>],
     titles: Option<&std::collections::HashMap<String, String>>,
-    max_width: Option<usize>,
+    max_width: Option<u16>,
     display_limit: Option<usize>,
-    include_all: bool,
+    all: bool,
 ) {
     let mut table = Table::new();
-    table.set_content_arrangement(ContentArrangement::Dynamic);
+    table.load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic);
+    
+    if let Some(width) = max_width {
+        table.set_width(width);
+    }
 
-    let filtered_positions: Vec<ContractMetric> = if include_all {
-        positions.to_vec()
+    let filtered_groups: Vec<Vec<ContractMetric>> = if all {
+        position_groups.to_vec()
     } else {
-        positions.iter()
-            .filter(|p| {
-                let total_shares: f64 = p.total_shares.values().sum();
-                total_shares.abs() > 0.1
+        position_groups.iter()
+            .map(|group| {
+                group.iter().filter(|p| {
+                    let total_shares: f64 = p.total_shares.values().map(|v| v.unwrap_or_default()).sum();
+                    total_shares.abs() > 0.1
+                })
+                .cloned()
+                .collect::<Vec<_>>()
             })
-            .cloned()
+            .filter(|group| !group.is_empty())
             .collect()
     };
 
@@ -130,8 +160,6 @@ pub fn print_positions_table(
         Cell::new("Profit %").add_attribute(Attribute::Bold).fg(Color::Cyan),
     ];
 
-    // Show User column only in market view (where many users are listed)
-    // In user view (where titles are provided), the user column is redundant
     let show_user = titles.is_none();
     if show_user {
         headers.push(Cell::new("User").add_attribute(Attribute::Bold).fg(Color::Cyan));
@@ -142,78 +170,91 @@ pub fn print_positions_table(
     let mut max_pos = 0.01;
     let mut min_neg = -0.01;
 
-    for p in &filtered_positions {
-        if p.profit > max_pos { max_pos = p.profit; }
-        if p.profit < min_neg { min_neg = p.profit; }
+    for group in &filtered_groups {
+        for p in group {
+            let profit = p.profit.unwrap_or_default();
+            if profit > max_pos { max_pos = profit; }
+            if profit < min_neg { min_neg = profit; }
+        }
     }
 
     let mut total_invested = 0.0;
     let mut total_profit = 0.0;
 
-    let display_items = if let Some(limit) = display_limit {
-        filtered_positions.iter().take(limit).collect::<Vec<_>>()
+    let display_groups = if let Some(limit) = display_limit {
+        filtered_groups.iter().take(limit).collect::<Vec<_>>()
     } else {
-        filtered_positions.iter().collect::<Vec<_>>()
+        filtered_groups.iter().collect::<Vec<_>>()
     };
 
-    for p in positions {
-        total_invested += p.invested;
-        total_profit += p.profit;
+    // Calculate totals from ALL positions
+    for group in position_groups {
+        for p in group {
+            total_invested += p.invested.unwrap_or_default();
+            total_profit += p.profit.unwrap_or_default();
+        }
     }
 
-    for p in display_items {
-        let color = if p.profit > 0.0 {
-            let ratio = (p.profit / max_pos).min(1.0).powf(0.6);
-            Color::Rgb { 
-                r: (200.0 * (1.0 - ratio)) as u8, 
-                g: (200.0 + 55.0 * ratio) as u8, 
-                b: (200.0 * (1.0 - ratio)) as u8 
+    for group in display_groups {
+        for (i, p) in group.iter().enumerate() {
+            let profit = p.profit.unwrap_or_default();
+            let color = if profit > 0.0 {
+                let ratio = (profit / max_pos).min(1.0).powf(0.6);
+                Color::Rgb { 
+                    r: (200.0 * (1.0 - ratio)) as u8, 
+                    g: (200.0 + 55.0 * ratio) as u8, 
+                    b: (200.0 * (1.0 - ratio)) as u8 
+                }
+            } else if profit < 0.0 {
+                let ratio = (profit / min_neg).min(1.0).powf(0.6);
+                Color::Rgb { 
+                    r: (200.0 + 55.0 * ratio) as u8, 
+                    g: (200.0 * (1.0 - ratio)) as u8, 
+                    b: (200.0 * (1.0 - ratio)) as u8 
+                }
+            } else {
+                Color::Reset
+            };
+
+            let mut market_display = if i == 0 {
+                titles
+                    .and_then(|m| m.get(&p.contract_id))
+                    .cloned()
+                    .unwrap_or_else(|| p.contract_id.clone())
+            } else {
+                "".to_string()
+            };
+
+            if let Some(limit) = max_width {
+                let limit = limit as usize;
+                if market_display.chars().count() > limit {
+                    market_display = market_display.chars().take(limit - 3).collect::<String>() + "...";
+                }
             }
-        } else if p.profit < 0.0 {
-            let ratio = (p.profit / min_neg).min(1.0).powf(0.6);
-            Color::Rgb { 
-                r: (200.0 + 55.0 * ratio) as u8, 
-                g: (200.0 * (1.0 - ratio)) as u8, 
-                b: (200.0 * (1.0 - ratio)) as u8 
+
+            let shares_display = format_shares(&p.total_shares);
+
+            let mut row = vec![
+                Cell::new(market_display),
+                Cell::new(shares_display),
+                Cell::new(&format!("{:.2}", p.invested.unwrap_or_default())),
+                Cell::new(&format!("{:.2}", p.profit.unwrap_or_default())).fg(color),
+                Cell::new(&format!("{:.2}%", p.profit_percent.unwrap_or_default())).fg(color),
+            ];
+
+            if show_user {
+                let user_display = if i == 0 {
+                    p.user_username.as_deref().unwrap_or(&p.user_id)
+                } else {
+                    ""
+                };
+                row.push(Cell::new(user_display));
             }
-        } else {
-            Color::Reset
-        };
 
-        let mut market_display = titles
-            .and_then(|m| m.get(&p.contract_id))
-            .cloned()
-            .unwrap_or_else(|| p.contract_id.clone());
-
-        if let Some(limit) = max_width {
-            if market_display.chars().count() > limit {
-                market_display = market_display.chars().take(limit - 3).collect::<String>() + "...";
-            }
+            table.add_row(row);
         }
-
-        let mut shares_display = p.total_shares.iter()
-            .filter(|(_, v)| v.abs() > 0.1)
-            .map(|(k, v)| format!("{}: {:.0}", k, v))
-            .collect::<Vec<_>>()
-            .join(", ");
-        
-        if shares_display.is_empty() {
-            shares_display = "-".to_string();
-        }
-
-        let mut row = vec![
-            Cell::new(market_display),
-            Cell::new(shares_display),
-            Cell::new(&format!("{:.2}", p.invested)),
-            Cell::new(&format!("{:.2}", p.profit)).fg(color),
-            Cell::new(&format!("{:.2}%", p.profit_percent)).fg(color),
-        ];
-
-        if show_user {
-            row.push(Cell::new(p.user_username.as_deref().unwrap_or("N/A")));
-        }
-
-        table.add_row(row);
+        // Add a small separator or empty line between groups if it has multiple rows?
+        // Actually, comfy-table handles it.
     }
 
     let total_color = if total_profit > 0.0 { Color::Green } else if total_profit < 0.0 { Color::Red } else { Color::Reset };

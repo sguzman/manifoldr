@@ -63,7 +63,7 @@ pub enum UserCommands {
         watch: Option<u64>,
         /// Max width of market title
         #[arg(short, long)]
-        max_width: Option<usize>,
+        max_width: Option<u16>,
         /// Number of positions to display in the table
         #[arg(short = 'd', long)]
         display_limit: Option<usize>,
@@ -113,7 +113,7 @@ pub enum MarketCommands {
         bottom: Option<i32>,
         /// Max width of market title
         #[arg(short, long)]
-        max_width: Option<usize>,
+        max_width: Option<u16>,
     },
 }
 

@@ -8,7 +8,8 @@ mod tests;
 use anyhow::Result;
 use clap::Parser;
 use cli::{Cli, Commands, UserCommands, MarketCommands, BetCommands};
-use api::ManifoldClient;
+use crate::api::client::ManifoldClient;
+use crate::api::models::ContractMetric;
 use dotenvy::dotenv;
 use tracing::{info, instrument};
 
@@ -94,20 +95,22 @@ async fn handle_user_command(client: ManifoldClient, command: UserCommands) -> R
                 };
                 info!(id, fetch_limit, "Fetching user positions");
                 let response = client.get_user_contract_metrics(&id, fetch_limit).await?;
-                let mut all_metrics = Vec::new();
-                for metrics in response.metrics_by_contract.values() {
-                    all_metrics.extend(metrics.clone());
-                }
                 
+                let mut groups: Vec<Vec<ContractMetric>> = response.metrics_by_contract.values().cloned().collect();
+                
+                // Sort groups by total profit descending
+                groups.sort_by(|a, b| {
+                    let a_profit: f64 = a.iter().map(|m| m.profit.unwrap_or_default()).sum();
+                    let b_profit: f64 = b.iter().map(|m| m.profit.unwrap_or_default()).sum();
+                    b_profit.partial_cmp(&a_profit).unwrap_or(std::cmp::Ordering::Equal)
+                });
+
                 let mut titles = std::collections::HashMap::new();
                 for contract in response.contracts {
                     titles.insert(contract.id, contract.question);
                 }
                 
-                // Sort by profit descending
-                all_metrics.sort_by(|a, b| b.profit.partial_cmp(&a.profit).unwrap());
-                
-                utils::print_positions_table(&all_metrics, Some(&titles), max_width, display_limit, all);
+                utils::print_positions_table(&groups, Some(&titles), max_width, display_limit, all);
 
                 if let Some(interval) = watch {
                     tokio::time::sleep(std::time::Duration::from_secs(interval)).await;
@@ -145,7 +148,23 @@ async fn handle_market_command(client: ManifoldClient, command: MarketCommands) 
         MarketCommands::Positions { market_id, top, bottom, max_width } => {
             info!(market_id, ?top, ?bottom, "Fetching market positions");
             let positions = client.get_market_positions(&market_id, top, bottom).await?;
-            utils::print_positions_table(&positions, None, max_width, None, true);
+            
+            // Group by user_id
+            let mut groups_map: std::collections::HashMap<String, Vec<ContractMetric>> = std::collections::HashMap::new();
+            for p in positions {
+                groups_map.entry(p.user_id.clone()).or_default().push(p);
+            }
+            
+            let mut groups: Vec<Vec<ContractMetric>> = groups_map.into_values().collect();
+            
+            // Sort groups by total profit descending
+            groups.sort_by(|a, b| {
+                let a_profit: f64 = a.iter().map(|m| m.profit.unwrap_or_default()).sum();
+                let b_profit: f64 = b.iter().map(|m| m.profit.unwrap_or_default()).sum();
+                b_profit.partial_cmp(&a_profit).unwrap_or(std::cmp::Ordering::Equal)
+            });
+
+            utils::print_positions_table(&groups, None, max_width, None, true);
         }
     }
     Ok(())
