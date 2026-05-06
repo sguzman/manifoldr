@@ -26,7 +26,46 @@ Today the CLI supports:
 Output is intentionally mixed by use case:
 
 - table output for browsing lists and common summaries
+- **real-time monitoring** of positions with `--watch`
 - pretty JSON for responses where the full payload is useful
+
+## Usage Examples
+
+### User Commands
+
+```bash
+# Get your own profile
+manifoldr user me
+
+# See your current positions (auto-detects ID from API key)
+manifoldr user positions
+
+# Monitor your positions in real-time (refreshes every 5s)
+manifoldr user positions --watch 5
+
+# View your profit history over time
+manifoldr user history
+```
+
+### Market Commands
+
+```bash
+# Search for markets
+manifoldr market search "will AI"
+
+# See top holders for a market
+manifoldr market positions [MARKET_ID]
+```
+
+### Bet Commands
+
+```bash
+# List your recent trades
+manifoldr bet list --user-id [USER_ID]
+
+# Place a bet
+manifoldr bet place [MARKET_ID] 50 YES
+```
 
 ## Features
 
