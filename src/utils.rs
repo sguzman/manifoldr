@@ -100,19 +100,26 @@ pub fn print_portfolio_history_table(history: &[PortfolioMetrics]) {
     println!("{}", table);
 }
 
-pub fn print_positions_table(positions: &[ContractMetric]) {
+pub fn print_positions_table(positions: &[ContractMetric], titles: Option<&std::collections::HashMap<String, String>>) {
     let mut table = Table::new();
     table.set_content_arrangement(ContentArrangement::Dynamic);
 
-    table.add_row(vec![
-        Cell::new("Market ID").add_attribute(Attribute::Bold).fg(Color::Cyan),
+    let mut headers = vec![
+        Cell::new("Market").add_attribute(Attribute::Bold).fg(Color::Cyan),
         Cell::new("Invested").add_attribute(Attribute::Bold).fg(Color::Cyan),
         Cell::new("Profit").add_attribute(Attribute::Bold).fg(Color::Cyan),
         Cell::new("Profit %").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("User").add_attribute(Attribute::Bold).fg(Color::Cyan),
-    ]);
+    ];
 
-    let mut max_pos = 0.01; // Avoid div by zero
+    // Only show User column if any position has a username
+    let has_usernames = positions.iter().any(|p| p.user_username.is_some());
+    if has_usernames {
+        headers.push(Cell::new("User").add_attribute(Attribute::Bold).fg(Color::Cyan));
+    }
+
+    table.add_row(headers);
+
+    let mut max_pos = 0.01;
     let mut min_neg = -0.01;
 
     for p in positions {
@@ -145,24 +152,39 @@ pub fn print_positions_table(positions: &[ContractMetric]) {
             Color::Reset
         };
 
-        table.add_row(vec![
-            Cell::new(&p.contract_id),
+        let market_display = titles
+            .and_then(|m| m.get(&p.contract_id))
+            .cloned()
+            .unwrap_or_else(|| p.contract_id.clone());
+
+        let mut row = vec![
+            Cell::new(market_display),
             Cell::new(&format!("{:.2}", p.invested)),
             Cell::new(&format!("{:.2}", p.profit)).fg(color),
             Cell::new(&format!("{:.2}%", p.profit_percent)).fg(color),
-            Cell::new(p.user_username.as_deref().unwrap_or("N/A")),
-        ]);
+        ];
+
+        if has_usernames {
+            row.push(Cell::new(p.user_username.as_deref().unwrap_or("N/A")));
+        }
+
+        table.add_row(row);
     }
 
     let total_color = if total_profit > 0.0 { Color::Green } else if total_profit < 0.0 { Color::Red } else { Color::Reset };
 
-    table.add_row(vec![
+    let mut footer = vec![
         Cell::new("TOTAL").add_attribute(Attribute::Bold),
         Cell::new(&format!("{:.2}", total_invested)).add_attribute(Attribute::Bold).fg(Color::Yellow),
         Cell::new(&format!("{:.2}", total_profit)).add_attribute(Attribute::Bold).fg(total_color),
         Cell::new(&format!("{:.2}%", (total_profit / total_invested.max(1.0)) * 100.0)).add_attribute(Attribute::Bold).fg(total_color),
-        Cell::new(""),
-    ]);
+    ];
+
+    if has_usernames {
+        footer.push(Cell::new(""));
+    }
+
+    table.add_row(footer);
 
     println!("{}", table);
 }

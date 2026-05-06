@@ -94,10 +94,15 @@ async fn handle_user_command(client: ManifoldClient, command: UserCommands) -> R
                     all_metrics.extend(metrics.clone());
                 }
                 
+                let mut titles = std::collections::HashMap::new();
+                for contract in response.contracts {
+                    titles.insert(contract.id, contract.question);
+                }
+                
                 // Sort by profit descending
                 all_metrics.sort_by(|a, b| b.profit.partial_cmp(&a.profit).unwrap());
                 
-                utils::print_positions_table(&all_metrics);
+                utils::print_positions_table(&all_metrics, Some(&titles));
 
                 if let Some(interval) = watch {
                     tokio::time::sleep(std::time::Duration::from_secs(interval)).await;
@@ -135,7 +140,7 @@ async fn handle_market_command(client: ManifoldClient, command: MarketCommands) 
         MarketCommands::Positions { market_id, top, bottom } => {
             info!(market_id, ?top, ?bottom, "Fetching market positions");
             let positions = client.get_market_positions(&market_id, top, bottom).await?;
-            utils::print_positions_table(&positions);
+            utils::print_positions_table(&positions, None);
         }
     }
     Ok(())
