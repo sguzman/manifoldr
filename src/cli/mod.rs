@@ -61,6 +61,9 @@ pub enum UserCommands {
         /// Watch and refresh positions every N seconds
         #[arg(short, long, default_missing_value = "10", num_args = 0..=1)]
         watch: Option<u64>,
+        /// Max width of market title
+        #[arg(short, long)]
+        max_width: Option<usize>,
     },
 }
 
@@ -96,12 +99,15 @@ pub enum MarketCommands {
         slug: bool,
     },
     /// Get market positions
-    Positions {
+    Positions { 
         market_id: String,
         #[arg(short, long)]
         top: Option<i32>,
         #[arg(short, long)]
         bottom: Option<i32>,
+        /// Max width of market title
+        #[arg(short, long)]
+        max_width: Option<usize>,
     },
 }
 

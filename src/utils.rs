@@ -100,7 +100,11 @@ pub fn print_portfolio_history_table(history: &[PortfolioMetrics]) {
     println!("{}", table);
 }
 
-pub fn print_positions_table(positions: &[ContractMetric], titles: Option<&std::collections::HashMap<String, String>>) {
+pub fn print_positions_table(
+    positions: &[ContractMetric], 
+    titles: Option<&std::collections::HashMap<String, String>>,
+    max_width: Option<usize>,
+) {
     let mut table = Table::new();
     table.set_content_arrangement(ContentArrangement::Dynamic);
 
@@ -152,10 +156,16 @@ pub fn print_positions_table(positions: &[ContractMetric], titles: Option<&std::
             Color::Reset
         };
 
-        let market_display = titles
+        let mut market_display = titles
             .and_then(|m| m.get(&p.contract_id))
             .cloned()
             .unwrap_or_else(|| p.contract_id.clone());
+
+        if let Some(limit) = max_width {
+            if market_display.chars().count() > limit {
+                market_display = market_display.chars().take(limit - 3).collect::<String>() + "...";
+            }
+        }
 
         let mut row = vec![
             Cell::new(market_display),
