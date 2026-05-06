@@ -124,6 +124,7 @@ pub fn print_positions_table(
 
     let mut headers = vec![
         Cell::new("Market").add_attribute(Attribute::Bold).fg(Color::Cyan),
+        Cell::new("Shares").add_attribute(Attribute::Bold).fg(Color::Cyan),
         Cell::new("Invested").add_attribute(Attribute::Bold).fg(Color::Cyan),
         Cell::new("Profit").add_attribute(Attribute::Bold).fg(Color::Cyan),
         Cell::new("Profit %").add_attribute(Attribute::Bold).fg(Color::Cyan),
@@ -190,8 +191,19 @@ pub fn print_positions_table(
             }
         }
 
+        let mut shares_display = p.total_shares.iter()
+            .filter(|(_, v)| v.abs() > 0.1)
+            .map(|(k, v)| format!("{}: {:.0}", k, v))
+            .collect::<Vec<_>>()
+            .join(", ");
+        
+        if shares_display.is_empty() {
+            shares_display = "-".to_string();
+        }
+
         let mut row = vec![
             Cell::new(market_display),
+            Cell::new(shares_display),
             Cell::new(&format!("{:.2}", p.invested)),
             Cell::new(&format!("{:.2}", p.profit)).fg(color),
             Cell::new(&format!("{:.2}%", p.profit_percent)).fg(color),
@@ -208,6 +220,7 @@ pub fn print_positions_table(
 
     let mut footer = vec![
         Cell::new("TOTAL").add_attribute(Attribute::Bold),
+        Cell::new(""),
         Cell::new(&format!("{:.2}", total_invested)).add_attribute(Attribute::Bold).fg(Color::Yellow),
         Cell::new(&format!("{:.2}", total_profit)).add_attribute(Attribute::Bold).fg(total_color),
         Cell::new(&format!("{:.2}%", (total_profit / total_invested.max(1.0)) * 100.0)).add_attribute(Attribute::Bold).fg(total_color),
