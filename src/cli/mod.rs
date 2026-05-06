@@ -64,6 +64,9 @@ pub enum UserCommands {
         /// Max width of market title
         #[arg(short, long)]
         max_width: Option<usize>,
+        /// Number of positions to display in the table
+        #[arg(short = 'd', long)]
+        display_limit: Option<usize>,
     },
 }
 

@@ -104,6 +104,7 @@ pub fn print_positions_table(
     positions: &[ContractMetric], 
     titles: Option<&std::collections::HashMap<String, String>>,
     max_width: Option<usize>,
+    display_limit: Option<usize>,
 ) {
     let mut table = Table::new();
     table.set_content_arrangement(ContentArrangement::Dynamic);
@@ -134,10 +135,18 @@ pub fn print_positions_table(
     let mut total_invested = 0.0;
     let mut total_profit = 0.0;
 
+    let display_items = if let Some(limit) = display_limit {
+        positions.iter().take(limit).collect::<Vec<_>>()
+    } else {
+        positions.iter().collect::<Vec<_>>()
+    };
+
     for p in positions {
         total_invested += p.invested;
         total_profit += p.profit;
+    }
 
+    for p in display_items {
         let color = if p.profit > 0.0 {
             let ratio = (p.profit / max_pos).min(1.0).powf(0.6);
             Color::Rgb { 

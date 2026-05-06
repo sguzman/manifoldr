@@ -78,7 +78,7 @@ async fn handle_user_command(client: ManifoldClient, command: UserCommands) -> R
             let history = client.get_user_portfolio_history(&id, &period).await?;
             utils::print_portfolio_history_table(&history);
         }
-        UserCommands::Positions { user_id, limit, watch, max_width } => {
+        UserCommands::Positions { user_id, limit, watch, max_width, display_limit } => {
             let id = resolve_user_id(&client, user_id).await?;
 
             loop {
@@ -102,7 +102,7 @@ async fn handle_user_command(client: ManifoldClient, command: UserCommands) -> R
                 // Sort by profit descending
                 all_metrics.sort_by(|a, b| b.profit.partial_cmp(&a.profit).unwrap());
                 
-                utils::print_positions_table(&all_metrics, Some(&titles), max_width);
+                utils::print_positions_table(&all_metrics, Some(&titles), max_width, display_limit);
 
                 if let Some(interval) = watch {
                     tokio::time::sleep(std::time::Duration::from_secs(interval)).await;
@@ -140,7 +140,7 @@ async fn handle_market_command(client: ManifoldClient, command: MarketCommands) 
         MarketCommands::Positions { market_id, top, bottom, max_width } => {
             info!(market_id, ?top, ?bottom, "Fetching market positions");
             let positions = client.get_market_positions(&market_id, top, bottom).await?;
-            utils::print_positions_table(&positions, None, max_width);
+            utils::print_positions_table(&positions, None, max_width, None);
         }
     }
     Ok(())
