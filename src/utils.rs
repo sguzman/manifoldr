@@ -131,10 +131,6 @@ pub fn print_positions_table(
     let mut table = Table::new();
     table.load_preset(UTF8_FULL)
         .set_content_arrangement(ContentArrangement::Dynamic);
-    
-    if let Some(width) = max_width {
-        table.set_width(width);
-    }
 
     let filtered_groups: Vec<Vec<ContractMetric>> = if all {
         position_groups.to_vec()
@@ -166,6 +162,16 @@ pub fn print_positions_table(
     }
 
     table.add_row(headers);
+
+    // Prioritize space for the Market column and set reasonable boundaries
+    table.column_mut(0).expect("Market column missing")
+        .set_constraint(comfy_table::ColumnConstraint::LowerBoundary(comfy_table::Width::Fixed(30)));
+    
+    // Numerical columns should be tight
+    for i in 2..5 {
+        table.column_mut(i).expect("Column missing")
+            .set_constraint(comfy_table::ColumnConstraint::ContentWidth);
+    }
 
     let mut max_pos = 0.01;
     let mut min_neg = -0.01;
