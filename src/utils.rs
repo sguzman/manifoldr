@@ -206,11 +206,12 @@ pub fn print_positions_table(
         }
     }
 
+    let mut displayed_invested = 0.0;
+    let mut displayed_profit = 0.0;
+
+    let mut all_displayed_positions = Vec::new();
     for group in display_groups {
-        let mut row_in_group = 0;
-        
-        // Collect all individual positions from all metrics in the group
-        let mut individual_positions = Vec::new();
+        let mut group_positions = Vec::new();
         for p in group {
             let mut sorted_outcomes: Vec<_> = p.total_shares.keys().collect();
             sorted_outcomes.sort();
@@ -220,14 +221,27 @@ pub fn print_positions_table(
                 if value.abs() < 0.1 { continue; }
                 
                 let invested = p.total_spent.get(outcome).unwrap_or(&None).unwrap_or_default();
-                let profit = value - invested;
+                // Heuristic: subtract loan from the outcome profit if it's a single-position contract (like binary/numeric)
+                let loan = if p.total_shares.len() == 1 { p.loan.unwrap_or_default() } else { 0.0 };
+                let profit = value - invested - loan;
                 let profit_pct = if invested > 0.1 { (profit / invested) * 100.0 } else { 0.0 };
                 
-                individual_positions.push((outcome, value, invested, profit, profit_pct, p));
+                group_positions.push((outcome, value, invested, profit, profit_pct, p));
             }
         }
+        all_displayed_positions.push(group_positions);
+    }
 
-        for (outcome, _value, invested, profit, profit_pct, p) in individual_positions {
+    for group_pos in &all_displayed_positions {
+        for (_outcome, _value, invested, profit, _pct, _p) in group_pos {
+            displayed_invested += *invested;
+            displayed_profit += *profit;
+        }
+    }
+
+    for group_pos in all_displayed_positions {
+        let mut row_in_group = 0;
+        for (outcome, _value, invested, profit, profit_pct, p) in group_pos {
             let color = if profit > 0.0 {
                 let ratio = (profit / max_pos).min(1.0).powf(0.6);
                 Color::Rgb { 
@@ -264,7 +278,7 @@ pub fn print_positions_table(
 
             let mut row = vec![
                 Cell::new(market_display),
-                Cell::new(outcome), // Just the outcome name (e.g. YES, NO, or Answer ID)
+                Cell::new(outcome), 
                 Cell::new(&format!("{:.2}", invested)),
                 Cell::new(&format!("{:.2}", profit)).fg(color),
                 Cell::new(&format!("{:.2}%", profit_pct)).fg(color),
@@ -284,8 +298,20 @@ pub fn print_positions_table(
         }
     }
 
-    let total_color = if total_profit > 0.0 { Color::Green } else if total_profit < 0.0 { Color::Red } else { Color::Reset };
+    let disp_total_color = if displayed_profit > 0.0 { Color::Green } else if displayed_profit < 0.0 { Color::Red } else { Color::Reset };
+    let mut disp_footer = vec![
+        Cell::new("DISPLAYED TOTAL").add_attribute(Attribute::Bold),
+        Cell::new(""),
+        Cell::new(&format!("{:.2}", displayed_invested)).add_attribute(Attribute::Bold).fg(Color::Yellow),
+        Cell::new(&format!("{:.2}", displayed_profit)).add_attribute(Attribute::Bold).fg(disp_total_color),
+        Cell::new(&format!("{:.2}%", (displayed_profit / displayed_invested.max(1.0)) * 100.0)).add_attribute(Attribute::Bold).fg(disp_total_color),
+    ];
+    if show_user {
+        disp_footer.push(Cell::new(""));
+    }
+    table.add_row(disp_footer);
 
+    let total_color = if total_profit > 0.0 { Color::Green } else if total_profit < 0.0 { Color::Red } else { Color::Reset };
     let mut footer = vec![
         Cell::new("TOTAL").add_attribute(Attribute::Bold),
         Cell::new(""),
@@ -293,11 +319,9 @@ pub fn print_positions_table(
         Cell::new(&format!("{:.2}", total_profit)).add_attribute(Attribute::Bold).fg(total_color),
         Cell::new(&format!("{:.2}%", (total_profit / total_invested.max(1.0)) * 100.0)).add_attribute(Attribute::Bold).fg(total_color),
     ];
-
     if show_user {
         footer.push(Cell::new(""));
     }
-
     table.add_row(footer);
 
     println!("{}", table);
