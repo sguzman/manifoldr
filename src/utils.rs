@@ -105,9 +105,22 @@ pub fn print_positions_table(
     titles: Option<&std::collections::HashMap<String, String>>,
     max_width: Option<usize>,
     display_limit: Option<usize>,
+    include_all: bool,
 ) {
     let mut table = Table::new();
     table.set_content_arrangement(ContentArrangement::Dynamic);
+
+    let filtered_positions: Vec<ContractMetric> = if include_all {
+        positions.to_vec()
+    } else {
+        positions.iter()
+            .filter(|p| {
+                let total_shares: f64 = p.total_shares.values().sum();
+                total_shares.abs() > 0.1
+            })
+            .cloned()
+            .collect()
+    };
 
     let mut headers = vec![
         Cell::new("Market").add_attribute(Attribute::Bold).fg(Color::Cyan),
@@ -128,7 +141,7 @@ pub fn print_positions_table(
     let mut max_pos = 0.01;
     let mut min_neg = -0.01;
 
-    for p in positions {
+    for p in &filtered_positions {
         if p.profit > max_pos { max_pos = p.profit; }
         if p.profit < min_neg { min_neg = p.profit; }
     }
@@ -137,9 +150,9 @@ pub fn print_positions_table(
     let mut total_profit = 0.0;
 
     let display_items = if let Some(limit) = display_limit {
-        positions.iter().take(limit).collect::<Vec<_>>()
+        filtered_positions.iter().take(limit).collect::<Vec<_>>()
     } else {
-        positions.iter().collect::<Vec<_>>()
+        filtered_positions.iter().collect::<Vec<_>>()
     };
 
     for p in positions {

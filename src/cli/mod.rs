@@ -67,6 +67,9 @@ pub enum UserCommands {
         /// Number of positions to display in the table
         #[arg(short = 'd', long)]
         display_limit: Option<usize>,
+        /// Include zero-value (closed) positions
+        #[arg(short, long)]
+        all: bool,
     },
 }
 
