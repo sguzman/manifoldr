@@ -116,9 +116,10 @@ pub fn print_positions_table(
         Cell::new("Profit %").add_attribute(Attribute::Bold).fg(Color::Cyan),
     ];
 
-    // Only show User column if any position has a username
-    let has_usernames = positions.iter().any(|p| p.user_username.is_some());
-    if has_usernames {
+    // Show User column only in market view (where many users are listed)
+    // In user view (where titles are provided), the user column is redundant
+    let show_user = titles.is_none();
+    if show_user {
         headers.push(Cell::new("User").add_attribute(Attribute::Bold).fg(Color::Cyan));
     }
 
@@ -183,7 +184,7 @@ pub fn print_positions_table(
             Cell::new(&format!("{:.2}%", p.profit_percent)).fg(color),
         ];
 
-        if has_usernames {
+        if show_user {
             row.push(Cell::new(p.user_username.as_deref().unwrap_or("N/A")));
         }
 
@@ -199,7 +200,7 @@ pub fn print_positions_table(
         Cell::new(&format!("{:.2}%", (total_profit / total_invested.max(1.0)) * 100.0)).add_attribute(Attribute::Bold).fg(total_color),
     ];
 
-    if has_usernames {
+    if show_user {
         footer.push(Cell::new(""));
     }
 

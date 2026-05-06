@@ -87,12 +87,12 @@ async fn handle_user_command(client: ManifoldClient, command: UserCommands) -> R
                     println!("Monitoring positions for: {} (Last update: {})", id, chrono::Local::now().format("%H:%M:%S"));
                 }
 
-                info!(id, limit, "Fetching user positions");
                 let fetch_limit = if let Some(dl) = display_limit {
                     limit.max(dl as i32)
                 } else {
                     limit
                 };
+                info!(id, fetch_limit, "Fetching user positions");
                 let response = client.get_user_contract_metrics(&id, fetch_limit).await?;
                 let mut all_metrics = Vec::new();
                 for metrics in response.metrics_by_contract.values() {
