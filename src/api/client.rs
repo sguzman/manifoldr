@@ -406,6 +406,46 @@ impl ManifoldClient {
         self.get(&format!("slug/{slug}"), None).await
     }
 
+    /// Selling changes a real account only when execute=true. There is no
+    /// server-side dryRun documented for /market/{id}/sell.
+    pub async fn sell_shares(
+        &self,
+        market_id: &str,
+        outcome: &str,
+        shares: Option<f64>,
+        answer_id: Option<&str>,
+        execute: bool,
+    ) -> ApiResult<serde_json::Value> {
+        let valid_id = |id: &str| {
+            !id.is_empty()
+                && id.bytes().all(|ch| ch.is_ascii_alphanumeric() || ch == b'-' || ch == b'_')
+        };
+        if !valid_id(market_id) || answer_id.is_some_and(|id| !valid_id(id)) {
+            return Err(ApiError::InvalidInput("Invalid market or answer ID".into()));
+        }
+        if !matches!(outcome, "YES" | "NO") {
+            return Err(ApiError::InvalidInput("Sale outcome must be YES or NO".into()));
+        }
+        if shares.is_some_and(|n| !n.is_finite() || n <= 0.0) {
+            return Err(ApiError::InvalidInput("Share count must be finite and positive".into()));
+        }
+        if !execute {
+            return Ok(serde_json::json!({
+                "marketId": market_id,
+                "outcome": outcome,
+                "shares": shares,
+                "all": shares.is_none(),
+                "answerId": answer_id,
+                "executed": false,
+                "message": "PREVIEW ONLY: nothing sent to Manifold. Add --execute to sell shares."
+            }));
+        }
+        let mut body = serde_json::json!({ "outcome": outcome });
+        if let Some(n) = shares { body["shares"] = serde_json::json!(n); }
+        if let Some(id) = answer_id { body["answerId"] = serde_json::json!(id); }
+        self.post(&format!("market/{market_id}/sell"), body).await
+    }
+
     pub async fn market_probability(&self, id: &str) -> ApiResult<serde_json::Value> {
         if id.trim().is_empty() {
             return Err(ApiError::InvalidInput("Market ID cannot be empty".into()));

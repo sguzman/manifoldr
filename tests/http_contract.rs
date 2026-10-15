@@ -372,3 +372,55 @@ async fn bad_bet_filters_make_no_requests() {
     }
     assert!(request_lines(&requests).is_empty());
 }
+
+
+#[tokio::test]
+async fn sell_shares_previews_without_network_and_posts_once_when_explicit() {
+    let (url, requests) = mock_server(vec![("200 OK", r#"{"sharesSold":4.0}"#)]).await;
+    let client = ManifoldClient::with_base_url(None, &url).unwrap();
+    let preview = client.sell_shares("market123", "YES", Some(4.0), Some("answer456"), false).await.unwrap();
+    assert_eq!(preview["executed"], false);
+    assert_eq!(preview["shares"], 4.0);
+    assert!(request_lines(&requests).is_empty(), "preview sent a request");
+
+    let result = client.sell_shares("market123", "YES", Some(4.0), Some("answer456"), true).await.unwrap();
+    assert_eq!(result["sharesSold"], 4.0);
+    let all = requests.lock().unwrap();
+    assert_eq!(all.len(), 1);
+    assert!(all[0].starts_with("POST /v0/market/market123/sell HTTP/1.1"));
+    let body: serde_json::Value = serde_json::from_str(all[0].split_once("\r\n\r\n").unwrap().1).unwrap();
+    assert_eq!(body["outcome"], "YES");
+    assert_eq!(body["shares"], 4.0);
+    assert_eq!(body["answerId"], "answer456");
+}
+
+#[tokio::test]
+async fn all_shares_omits_shares_property_and_never_retries() {
+    let (url, requests) = mock_server(vec![("503 Service Unavailable", r#"{"error":"down"}"#)]).await;
+    let client = ManifoldClient::with_base_url(None, &url).unwrap();
+    let error = client.sell_shares("m1", "NO", None, None, true).await.unwrap_err();
+    assert_eq!(error.status(), Some(reqwest::StatusCode::SERVICE_UNAVAILABLE));
+    let all = requests.lock().unwrap();
+    assert_eq!(all.len(), 1, "sale POST must not retry");
+    let body: serde_json::Value = serde_json::from_str(all[0].split_once("\r\n\r\n").unwrap().1).unwrap();
+    assert_eq!(body["outcome"], "NO");
+    assert!(body.get("shares").is_none());
+    assert!(body.get("answerId").is_none());
+}
+
+#[tokio::test]
+async fn invalid_sale_inputs_fail_before_post() {
+    let (url, requests) = mock_server(vec![("200 OK", "{}")]).await;
+    let client = ManifoldClient::with_base_url(None, &url).unwrap();
+    for (market, outcome, shares, answer) in [
+        ("../bad", "YES", Some(1.0), None),
+        ("m1", "MAYBE", Some(1.0), None),
+        ("m1", "YES", Some(0.0), None),
+        ("m1", "YES", Some(f64::NAN), None),
+        ("m1", "NO", Some(-1.0), None),
+        ("m1", "NO", None, Some("../../wrong")),
+    ] {
+        assert!(client.sell_shares(market, outcome, shares, answer, true).await.is_err());
+    }
+    assert!(request_lines(&requests).is_empty());
+}

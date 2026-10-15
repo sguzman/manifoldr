@@ -114,6 +114,25 @@ pub enum TopicCommands {
 
 #[derive(Subcommand, Debug)]
 pub enum MarketCommands {
+    /// Preview selling shares (or actually sell with --execute)
+    Sell {
+        market_id: String,
+        /// Sell this many shares; mutually exclusive with --all
+        #[arg(long, required_unless_present = "all", conflicts_with = "all")]
+        shares: Option<f64>,
+        /// Explicitly sell all shares in the outcome
+        #[arg(long, conflicts_with = "shares")]
+        all: bool,
+        /// Which shares to sell
+        #[arg(long, value_parser = ["YES", "NO"])]
+        outcome: String,
+        /// Required by Manifold for multiple-choice markets
+        #[arg(long)]
+        answer_id: Option<String>,
+        /// Send a real sale request; otherwise preview locally
+        #[arg(long)]
+        execute: bool,
+    },
     /// List markets
     List {
         #[arg(short, long, default_value_t = 10)]
