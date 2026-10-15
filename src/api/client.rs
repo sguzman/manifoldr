@@ -70,8 +70,7 @@ impl ManifoldClient {
             match request.send().await {
                 Ok(response) => {
                     let status = response.status();
-                    if matches!(status.as_u16(), 502..=504) && attempt + 1 < MAX_GET_ATTEMPTS
-                    {
+                    if matches!(status.as_u16(), 502..=504) && attempt + 1 < MAX_GET_ATTEMPTS {
                         tokio::time::sleep(Duration::from_millis(400 * 2_u64.pow(attempt))).await;
                         continue;
                     }

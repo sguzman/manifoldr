@@ -1,9 +1,9 @@
 mod api;
 mod cli;
-mod logging;
 #[cfg(test)]
 #[path = "tests.rs"]
 mod fixture_tests;
+mod logging;
 mod utils;
 
 use crate::api::client::{ManifoldClient, is_not_found};

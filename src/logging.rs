@@ -1,6 +1,6 @@
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
-use tracing_appender::rolling;
 use tracing_appender::non_blocking::WorkerGuard;
+use tracing_appender::rolling;
+use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 pub fn init_logging() -> WorkerGuard {
     let file_appender = rolling::daily("logs", "manifoldr.log");
