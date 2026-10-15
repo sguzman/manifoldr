@@ -29,7 +29,7 @@ Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for 
 - [ ] Complete pagination/filter coverage (market, bet and user cursors; position offset/order/per-answer; market creator/topic filters implemented). Portfolio history has no documented pagination cursor.
 - [x] Single and bulk market probability retrieval with structured JSON output
 - [x] Group/topic and user discovery endpoints (listing with cursors and topic by slug)
-- [ ] Order inspection/cancellation and share-selling flows (read-only open-limit inspection and opt-in cancellation implemented; share selling still pending)
+- [x] Order inspection/cancellation and share-selling flows (all read-only or local preview by default; real cancellations and sales require `--execute`; no real writes tested)
 - [ ] Live REST compatibility fixtures; capture only non-sensitive public responses
 - [x] Integration tests using a local HTTP mock server (never authenticated live trading)
 - [ ] API limits, backoff, observability, and resilience for intermittent networks (429 is typed and not retried; further resilience work open)

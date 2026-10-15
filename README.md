@@ -66,6 +66,9 @@ Examples use the installed `manifoldr` binary. During development, prefix comman
 | `manifoldr user positions USERNAME --offset 25 --order profit --per-answer` | Page positions by server sort and include multiple-choice answers |
 | `manifoldr user positions --watch 10` | Refresh positions every 10 seconds |
 | `manifoldr market list --limit 20` | Recently created markets |
+| `manifoldr market sell MARKET_ID --outcome YES --shares 5` | Preview selling 5 YES shares locally |
+| `manifoldr market sell MARKET_ID --outcome YES --shares 5 --execute` | **Sell shares for real** |
+| `manifoldr market sell MARKET_ID --outcome NO --all` | Preview selling all NO shares; requires `--execute` to submit |
 | `manifoldr market list --user-id USER_ID --group-id TOPIC_ID` | Filter market listing by creator and topic |
 | `manifoldr market search "AI safety" --limit 20` | Search markets |
 | `manifoldr market search "AI" --sort newest --before-time 1706000000000` | Deep search pagination by creation timestamp |
@@ -89,6 +92,10 @@ Examples use the installed `manifoldr` binary. During development, prefix comman
     manifoldr bet place MARKET_ID 5 YES --execute
 
 That command **places a real bet** using your authenticated account. This interface supports `YES` and `NO` outcomes for binary markets; passing another outcome or an invalid amount is rejected before contacting Manifold. The client does not automatically retry POST requests, because repeating a request can create a duplicate order. Always confirm account, market ID, and amount before using `--execute`.
+
+### Selling shares (explicit opt-in)
+
+`market sell MARKET_ID --outcome YES --shares 5` previews a sale locally without making any HTTP request. To sell for real, add `--execute`. To request sale of the entire YES or NO position, use `--all` instead of `--shares`; the API receives no `shares` property in that case. Use `--answer-id ANSWER_ID` for multiple-choice market outcomes, as required by Manifold. `--shares` must be finite and greater than zero, and the CLI requires `--outcome YES|NO`. The API has **no documented server-side dry-run** for sales, so the preview is local. The CLI does not verify position ownership or price immediately before execution. An executed sale changes your real account; check the market and amount before using it. Sale POSTs are never retried automatically.
 
 ### Order inspection and cancellation
 
@@ -147,7 +154,7 @@ Manifold documentation: https://docs.manifold.markets/api
 - Incomplete endpoint coverage, no WebSocket client or persistent offline cache yet.
 - User identifiers are attempted as usernames first, then as IDs only on HTTP 404. `user get --id` bypasses username lookup.
 - API schema changes can still break parsing; please retain non-sensitive fixture samples for regressions.
-- Only binary YES/NO bets can be placed. Read-only open-limit inspection and explicitly opted-in cancellation are available; share-selling, advanced order creation and multi-answer trading remain unimplemented.
+- Only binary YES/NO bets can be placed. Read-only open-limit inspection, opted-in cancellation and opted-in share sales are available; advanced order creation and multi-answer trading remain unimplemented.
 - No independent portfolio price oracle or per-asset/accounting reconciliation.
 
 See [ROADMAP.md](ROADMAP.md), [SECURITY.md](SECURITY.md) and [CHANGELOG.md](CHANGELOG.md).

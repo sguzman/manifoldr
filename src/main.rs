@@ -204,13 +204,24 @@ async fn handle_market_command(
     json: bool,
 ) -> Result<()> {
     match command {
-        MarketCommands::Sell { market_id, shares, all: _, outcome, answer_id, execute } => {
+        MarketCommands::Sell {
+            market_id,
+            shares,
+            all: _,
+            outcome,
+            answer_id,
+            execute,
+        } => {
             if execute {
                 eprintln!("Executing a REAL share sale in market {market_id}.");
             } else {
                 eprintln!("PREVIEW ONLY: no sale request will be sent.");
             }
-            print_json(&client.sell_shares(&market_id, &outcome, shares, answer_id.as_deref(), execute).await?)?;
+            print_json(
+                &client
+                    .sell_shares(&market_id, &outcome, shares, answer_id.as_deref(), execute)
+                    .await?,
+            )?;
         }
         MarketCommands::List {
             limit,

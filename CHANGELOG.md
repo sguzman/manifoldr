@@ -4,6 +4,9 @@
 
 ### Added (P1 underway)
 
+- `market sell` safely previews a YES/NO share sale locally and requires `--execute` for real submission; `--shares` and `--all` are mutually exclusive.
+- Offline mock-server tests cover explicit share-sale requests, omit shares for --all, reject invalid inputs and prohibit automatic POST retries.
+
 - Read-only open-limit order inspection and expanded bet filters (username, market slug, timestamp, order).
 - Local-only `bet cancel BET_ID` preview; real cancellation POST requires `--execute`, validates the ID and never retries.
 - Optional `orderAmount` and `limitProb` bet fields and four new offline HTTP contract tests.

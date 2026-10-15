@@ -19,15 +19,8 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      - name: Format diagnostic
-        run: |
-          cargo fmt --all
-          for file in src/api/client.rs src/cli/mod.rs src/main.rs tests/http_contract.rs; do
-            echo "FORMATSTART:$file"
-            base64 -w0 "$file"
-            echo
-            echo "FORMATEND:$file"
-          done
+      - name: Formatting
+        run: cargo fmt --all -- --check
       - name: Static analysis
         run: cargo clippy --locked --all-targets -- -D warnings
       - name: Unit tests
@@ -37,8 +30,11 @@ jobs:
           cargo run --locked -- --help
           cargo run --locked -- bet list --help
           cargo run --locked -- bet cancel --help
+          cargo run --locked -- market sell --help
       - name: Local cancellation preview (no network)
         run: cargo run --locked -- bet cancel SAMPLE123
+      - name: Local share-sale preview (no network)
+        run: cargo run --locked -- market sell SAMPLE123 --outcome YES --shares 1.5
       - name: Public smoke — market list (best effort)
         continue-on-error: true
         run: cargo run --locked -- --json market list --limit 1 > /dev/null
