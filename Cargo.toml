@@ -1,6 +1,6 @@
 [package]
 name = "manifoldr"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 
 [dependencies]
@@ -21,3 +21,6 @@ comfy-table = "7.1"
 indicatif = "0.17"
 futures = "0.3"
 url = "2.5"
+
+tokio-tungstenite = { version = "0.30", features = ["rustls-tls-webpki-roots"] }
+clap_complete = "4.6"

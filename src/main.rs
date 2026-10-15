@@ -3,7 +3,7 @@ mod logging;
 mod utils;
 
 use anyhow::{Result, bail};
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use cli::{BetCommands, Cli, Commands, MarketCommands, TopicCommands, UserCommands};
 use dotenvy::dotenv;
 use manifoldr::api::client::{BetFilters, ManifoldClient, is_not_found};
@@ -17,9 +17,18 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     let json = cli.json;
     let api_key = cli.api_key.or_else(|| std::env::var("API_KEY").ok());
+    if let Commands::Completions { shell } = cli.command {
+        clap_complete::generate(shell, &mut Cli::command(), "manifoldr", &mut std::io::stdout());
+        return Ok(());
+    }
+    if let Commands::Stream { topics, count } = cli.command {
+        manifoldr::realtime::run(topics, count).await?;
+        return Ok(());
+    }
     let client = ManifoldClient::new(api_key)?;
 
     match cli.command {
+        Commands::Stream { .. } | Commands::Completions { .. } => unreachable!("handled before client initialization"),
         Commands::User { command } => handle_user_command(client, command, json).await?,
         Commands::Topic { command } => handle_topic_command(client, command).await?,
         Commands::Market { command } => handle_market_command(client, command, json).await?,

@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use clap_complete::Shell;
 
 #[derive(Parser, Debug)]
 #[command(name = "manifoldr")]
@@ -18,6 +19,19 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
+    /// Emit shell completion definitions for bash, fish, zsh, etc.
+    Completions {
+        shell: Shell,
+    },
+    /// Subscribe to live Manifold WebSocket events as NDJSON
+    Stream {
+        /// One or more documented stream topics (repeat for multiple)
+        #[arg(long = "topic", required = true, num_args = 1..)]
+        topics: Vec<String>,
+        /// Stop after receiving this many events (0 = continuous)
+        #[arg(long, default_value_t = 0)]
+        count: usize,
+    },
     /// User related commands
     User {
         #[command(subcommand)]
