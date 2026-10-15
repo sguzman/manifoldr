@@ -2,11 +2,11 @@
 
 Rust terminal client for the [Manifold Markets API](https://docs.manifold.markets/api), with tables for interactive inspection and JSON for scripts.
 
-**Status (October 15, 2026):** v0.3.0 adds local caching and strict offline mode to the previously released v0.2.0 Rust client. Its Linux x86-64 binary is published after the full GitHub Actions quality gate. Persistent portfolio accounting and background synchronization remain future work.
+**Status (October 15, 2026):** [Manifoldr v0.3.0](https://github.com/sguzman/manifoldr/releases/tag/v0.3.0) is released with Linux x86-64 binaries, public-only persistent caching, strict offline mode, WebSocket streaming, a reusable Rust library, and safely opted-in trading. Both [strict Rust CI](https://github.com/sguzman/manifoldr/actions/runs/38811669977) and the [release build](https://github.com/sguzman/manifoldr/actions/runs/38811670010) passed. Incremental historical sync and complete financial reconciliation remain future enhancements.
 
 ## Linux binary
 
-The [v0.3.0 Linux x86-64 release](https://github.com/sguzman/manifoldr/releases/tag/v0.3.0) includes the cache and offline-mode commands. The [v0.2.0 release](https://github.com/sguzman/manifoldr/releases/tag/v0.2.0) remains available for earlier versions. Verify the release's SHA256SUMS before extracting the binary.
+Download the verified [v0.3.0 Linux x86-64 binary archive](https://github.com/sguzman/manifoldr/releases/download/v0.3.0/manifoldr-linux-x86_64.tar.gz) with its [SHA256SUMS](https://github.com/sguzman/manifoldr/releases/download/v0.3.0/SHA256SUMS). Previous releases, including v0.2.0, remain available. Verify the checksum before extracting and running.
 
 ## Build
 

@@ -32,3 +32,7 @@ future enhancements. Do not imply those exist until implemented and tested.
 ## v0.3.0
 
 Public GET caching and strict offline mode are included. The packaging workflow derives the tag from Cargo.toml and publishes it only after formatting, Clippy, tests and release-mode build pass. Older releases are never replaced.
+
+### Published v0.3.0
+
+[v0.3.0](https://github.com/sguzman/manifoldr/releases/tag/v0.3.0) was published October 15, 2026 with the Linux x86-64 tarball and SHA256SUMS. Its [release workflow](https://github.com/sguzman/manifoldr/actions/runs/38811670010) completed the Rust formatting, Clippy, offline tests, optimized build, and artifact publication checks successfully. The [strict Rust CI](https://github.com/sguzman/manifoldr/actions/runs/38811669977) also passed.

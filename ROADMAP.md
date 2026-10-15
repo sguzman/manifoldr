@@ -1,6 +1,6 @@
 # Manifoldr revival roadmap
 
-**Milestone released:** [v0.2.0](https://github.com/sguzman/manifoldr/releases/tag/v0.2.0), October 15, 2026. Revival and Linux binary distribution are complete. Remaining unchecked work is optional follow-up scope, not a blocker to this release.
+**Milestones released:** [v0.2.0](https://github.com/sguzman/manifoldr/releases/tag/v0.2.0) (revival) and [v0.3.0](https://github.com/sguzman/manifoldr/releases/tag/v0.3.0) (persistent public-read cache and offline mode), October 15, 2026. Both releases have verified Linux binaries and SHA256SUMS. Remaining unchecked work is optional follow-up scope.
 
 Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for the public Manifold Markets API. Changes go directly to the default branch in coherent commits; trading remains opt-in.
 
@@ -39,7 +39,8 @@ Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for 
 ## P2 — Usability and real-time functionality
 
 - [x] WebSocket streaming and connection re-establishment (local reconnect test and strict CI verified)
-- [ ] Local caching, incremental sync and offline history (v0.3.0 public GET cache and strict offline mode implemented; historical synchronization remains future work)
+- [x] Persistent public GET cache and strict offline mode (v0.3.0; mock tests and CI verified)
+- [ ] Historical incremental synchronization and offline portfolio history (not implemented; do not cache private account data without a separate explicit design)
 - [ ] Reliable portfolio valuation for multi-outcome, mana/cash and loan cases
 - [x] Market search filters and shell completions (fish/bash/zsh; strict CI passed)
 - [ ] Document stable machine-readable JSON schemas
