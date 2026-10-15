@@ -38,6 +38,9 @@ jobs:
       - name: Public smoke — user list (best effort)
         continue-on-error: true
         run: cargo run --locked -- --json user list --limit 1 > /dev/null
+      - name: Public smoke — open limit bets (best effort)
+        continue-on-error: true
+        run: cargo run --locked -- --json bet list --open-limit --limit 1 > /dev/null
       - name: Public smoke — topic list (best effort)
         continue-on-error: true
         run: cargo run --locked -- topic list > /dev/null
