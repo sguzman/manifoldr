@@ -2,7 +2,7 @@
 
 Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for the public Manifold Markets API. Changes go directly to the default branch in coherent commits; trading remains opt-in.
 
-## P0 — Stabilize and recover (in progress)
+## P0 — Stabilize and recover (completed 2026-10-15)
 
 - [x] Inventory existing commands, source code, dependencies, and historical output
 - [x] Recheck upstream API documentation and identify schema and accounting risks
@@ -17,20 +17,20 @@ Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for 
 - [x] Verify a clean build, unit tests, and representative live read-only API calls
   - 2026-10-15: GitHub Actions [Rust CI run 38796201375](https://github.com/sguzman/manifoldr/actions/runs/38796201375) passed rustfmt, Clippy, unit tests, CLI help and public market-list API smoke.
   - Authenticated portfolio commands and real order execution intentionally NOT exercised in CI.
-  (Do not mark this complete until actually run and verified.)
+
 
 ## P1 — Expand endpoint coverage
 
-Work in progress (2026-10-15): library extraction; user/topic discovery; single probability lookup; cursor-aware market search and bet queries; local HTTP contract tests. Keep checklist items open until CI verifies the new implementation and related subfeatures are complete.
+2026-10-15 progress: [CI run 38799177704](https://github.com/sguzman/manifoldr/actions/runs/38799177704) passed formatting, Clippy, 15 tests, CLI help and three separate read-only public API smoke checks (markets, users, topics). Authenticated actions remain untested.
 
-- [ ] Split reusable API client into a library crate; CLI becomes a thin adapter
+- [x] Split reusable API client into a library crate; CLI consumes it (further handler decomposition optional)
 - [ ] Typed errors and explicit username/ID handling throughout
-- [ ] Pagination and robust filtering for markets, bets, positions and history
-- [x] Bulk probability retrieval with structured output (`market probabilities`, 1–100 IDs); per-market probability conveniences still pending
-- [ ] Group/topic and user discovery endpoints
+- [ ] Complete pagination and robust filtering for markets, bets, positions and history (market/bet/user cursor support landed; positions/history and filters outstanding)
+- [x] Single and bulk market probability retrieval with structured JSON output
+- [x] Group/topic and user discovery endpoints (listing with cursors and topic by slug)
 - [ ] Order inspection/cancellation and share-selling flows (all safe by default)
 - [ ] Live REST compatibility fixtures; capture only non-sensitive public responses
-- [ ] Integration tests using a local HTTP mock server (never authenticated live trading)
+- [x] Integration tests using a local HTTP mock server (never authenticated live trading)
 - [ ] API limits, backoff, observability, and resilience for intermittent networks
 
 ## P2 — Usability and real-time functionality

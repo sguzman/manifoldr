@@ -2,7 +2,7 @@
 
 Rust terminal client for the [Manifold Markets API](https://docs.manifold.markets/api), with tables for interactive inspection and JSON for scripts.
 
-**Status (October 2026):** Stabilization verified in [Rust CI](https://github.com/sguzman/manifoldr/actions/runs/38796201375); larger endpoint and real-time roadmap remains open. See [ROADMAP.md](ROADMAP.md) for implemented and planned work and [CHANGELOG.md](CHANGELOG.md) for behavioral changes. The public Manifold API is marked alpha; response schemas may change.
+**Status (October 2026):** P0 stabilization completed and the first P1 library/discovery increment verified in [Rust CI](https://github.com/sguzman/manifoldr/actions/runs/38799177704). More endpoint coverage and real-time features remain open. See [ROADMAP.md](ROADMAP.md) for implemented and planned work and [CHANGELOG.md](CHANGELOG.md) for behavioral changes. The public Manifold API is marked alpha; response schemas may change.
 
 ## Build
 
@@ -111,7 +111,7 @@ Run:
     cargo clippy --locked --all-targets -- -D warnings
     cargo test --locked --all-targets
 
-GitHub Actions runs the same offline checks on pushes to `main` and pull requests. It includes a non-blocking, public, read-only smoke query to catch API changes. CI never submits real orders and does not require an API key.
+GitHub Actions runs the same offline checks on pushes to `main` and pull requests. Three separate non-blocking public read-only smoke queries exercise markets, users and topics to catch API changes. CI never submits real orders and does not require an API key.
 
 Source layout:
 
