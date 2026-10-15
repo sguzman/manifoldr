@@ -174,6 +174,12 @@ pub enum MarketCommands {
 
 #[derive(Subcommand, Debug)]
 pub enum BetCommands {
+    /// Preview a limit-order cancellation, or execute it with --execute
+    Cancel {
+        bet_id: String,
+        #[arg(long)]
+        execute: bool,
+    },
     /// Place a bet
     Place {
         /// Market ID
@@ -200,5 +206,18 @@ pub enum BetCommands {
         /// Fetch newer bets after the given bet ID
         #[arg(long)]
         after: Option<String>,
+        #[arg(long, conflicts_with = "user_id")]
+        username: Option<String>,
+        #[arg(long, conflicts_with = "market_id")]
+        contract_slug: Option<String>,
+        /// Return open limit orders, including closed/resolved-market orders
+        #[arg(long)]
+        open_limit: bool,
+        #[arg(long)]
+        before_time: Option<i64>,
+        #[arg(long)]
+        after_time: Option<i64>,
+        #[arg(long, value_parser = ["asc", "desc"])]
+        order: Option<String>,
     },
 }

@@ -84,6 +84,8 @@ pub struct Bet {
     pub is_cancelled: Option<bool>,
     pub is_filled: Option<bool>,
     pub is_redemption: Option<bool>,
+    pub order_amount: Option<f64>,
+    pub limit_prob: Option<f64>,
 }
 
 #[allow(dead_code)]

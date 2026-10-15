@@ -54,6 +54,22 @@ fn bounded_limit(n: i32, name: &str) -> ApiResult<()> {
     Ok(())
 }
 
+/// Optional filters for the public GET /v0/bets endpoint.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct BetFilters<'a> {
+    pub user_id: Option<&'a str>,
+    pub username: Option<&'a str>,
+    pub market_id: Option<&'a str>,
+    pub contract_slug: Option<&'a str>,
+    pub limit: Option<i32>,
+    pub before: Option<&'a str>,
+    pub after: Option<&'a str>,
+    pub before_time: Option<i64>,
+    pub after_time: Option<i64>,
+    pub kinds: Option<&'a str>,
+    pub order: Option<&'a str>,
+}
+
 pub struct ManifoldClient {
     client: Client,
     base_url: String,
@@ -454,32 +470,68 @@ impl ManifoldClient {
         before: Option<&str>,
         after: Option<&str>,
     ) -> ApiResult<Vec<Bet>> {
-        if before.is_some() && after.is_some() {
-            return Err(ApiError::InvalidInput(
-                "Use only one of before or after".into(),
-            ));
+        self.list_bets_filtered(BetFilters {
+            user_id, market_id, limit, before, after,
+            ..BetFilters::default()
+        }).await
+    }
+
+    /// Read-only inspection of bet history and open-limit orders.
+    pub async fn list_bets_filtered(&self, filters: BetFilters<'_>) -> ApiResult<Vec<Bet>> {
+        if filters.before.is_some() && filters.after.is_some() {
+            return Err(ApiError::InvalidInput("Use only one of before or after".into()));
         }
-        if let Some(n) = limit {
+        if let Some(n) = filters.limit {
             bounded_limit(n, "Bet limit")?;
         }
+        if filters.order.is_some_and(|s| !matches!(s, "asc" | "desc")) {
+            return Err(ApiError::InvalidInput("Bet order must be asc or desc".into()));
+        }
+        if filters.kinds.is_some_and(|s| s != "open-limit") {
+            return Err(ApiError::InvalidInput("Only kinds=open-limit is supported".into()));
+        }
         let mut query = Vec::new();
-        if let Some(id) = user_id {
-            query.push(("userId", id.to_owned()));
+        for (key, value) in [
+            ("userId", filters.user_id),
+            ("username", filters.username),
+            ("contractId", filters.market_id),
+            ("contractSlug", filters.contract_slug),
+            ("before", filters.before),
+            ("after", filters.after),
+            ("kinds", filters.kinds),
+            ("order", filters.order),
+        ] {
+            if let Some(value) = value {
+                query.push((key, value.to_owned()));
+            }
         }
-        if let Some(id) = market_id {
-            query.push(("contractId", id.to_owned()));
-        }
-        if let Some(n) = limit {
+        if let Some(n) = filters.limit {
             query.push(("limit", n.to_string()));
         }
-        if let Some(id) = before {
-            query.push(("before", id.to_owned()));
+        if let Some(n) = filters.before_time {
+            query.push(("beforeTime", n.to_string()));
         }
-        if let Some(id) = after {
-            query.push(("after", id.to_owned()));
+        if let Some(n) = filters.after_time {
+            query.push(("afterTime", n.to_string()));
         }
         self.get("bets", Some(&query)).await
     }
+
+    /// Preview locally by default; the cancellation endpoint has no dry-run support.
+    pub async fn cancel_limit_order(&self, bet_id: &str, execute: bool) -> ApiResult<serde_json::Value> {
+        if bet_id.is_empty() || !bet_id.bytes().all(|ch| ch.is_ascii_alphanumeric() || ch == b'-' || ch == b'_') {
+            return Err(ApiError::InvalidInput("Invalid bet ID".into()));
+        }
+        if !execute {
+            return Ok(serde_json::json!({
+                "betId": bet_id,
+                "executed": false,
+                "message": "PREVIEW ONLY: nothing sent to Manifold. Add --execute to cancel this order."
+            }));
+        }
+        self.post(&format!("bet/cancel/{bet_id}"), serde_json::json!({})).await
+    }
+
 }
 
 pub(crate) fn validate_bet(amount: f64, outcome: &str) -> ApiResult<()> {

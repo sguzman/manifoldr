@@ -6,7 +6,7 @@ use anyhow::{Result, bail};
 use clap::Parser;
 use cli::{BetCommands, Cli, Commands, MarketCommands, TopicCommands, UserCommands};
 use dotenvy::dotenv;
-use manifoldr::api::client::{ManifoldClient, is_not_found};
+use manifoldr::api::client::{BetFilters, ManifoldClient, is_not_found};
 use manifoldr::api::models::ContractMetric;
 use tracing::{info, instrument};
 
@@ -309,6 +309,14 @@ async fn handle_bet_command(
     json: bool,
 ) -> Result<()> {
     match command {
+        BetCommands::Cancel { bet_id, execute } => {
+            if execute {
+                eprintln!("Executing REAL cancellation of limit order {bet_id}.");
+            } else {
+                eprintln!("PREVIEW ONLY: no cancellation request will be sent.");
+            }
+            print_json(&client.cancel_limit_order(&bet_id, execute).await?)?;
+        }
         BetCommands::Place {
             market_id,
             amount,
@@ -327,24 +335,25 @@ async fn handle_bet_command(
             )?;
         }
         BetCommands::List {
-            user_id,
-            market_id,
-            limit,
-            before,
-            after,
+            user_id, market_id, limit, before, after,
+            username, contract_slug, open_limit, before_time, after_time, order,
         } => {
             if limit <= 0 {
                 bail!("Bet limit must be positive");
             }
-            let bets = client
-                .list_bets_with_cursor(
-                    user_id.as_deref(),
-                    market_id.as_deref(),
-                    Some(limit),
-                    before.as_deref(),
-                    after.as_deref(),
-                )
-                .await?;
+            let bets = client.list_bets_filtered(BetFilters {
+                user_id: user_id.as_deref(),
+                username: username.as_deref(),
+                market_id: market_id.as_deref(),
+                contract_slug: contract_slug.as_deref(),
+                limit: Some(limit),
+                before: before.as_deref(),
+                after: after.as_deref(),
+                before_time,
+                after_time,
+                kinds: if open_limit { Some("open-limit") } else { None },
+                order: order.as_deref(),
+            }).await?;
             if json {
                 print_json(&bets)?;
             } else {
