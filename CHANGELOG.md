@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 — release candidate (2026-10-15)
+## 0.2.0 — released (2026-10-15)
 
 - Added public real-time WebSocket subscriptions with keepalive pings, resubscription, bounded backoff and newline-delimited JSON output.
 - Added fish/bash/zsh and other shell completion generation.

@@ -2,7 +2,11 @@
 
 Rust terminal client for the [Manifold Markets API](https://docs.manifold.markets/api), with tables for interactive inspection and JSON for scripts.
 
-**Status (October 2026):** P0 complete, with library/discovery and typed-error/pagination P1 increments verified in [Rust CI](https://github.com/sguzman/manifoldr/actions/runs/38801962820). More endpoint coverage and real-time features remain open. See [ROADMAP.md](ROADMAP.md) for implemented and planned work and [CHANGELOG.md](CHANGELOG.md) for behavioral changes. The public Manifold API is marked alpha; response schemas may change.
+**Status (October 15, 2026):** [Manifoldr v0.2.0](https://github.com/sguzman/manifoldr/releases/tag/v0.2.0) is released with a Linux x86-64 binary, reusable Rust library, WebSocket streaming and opt-in account writes. Both [strict CI](https://github.com/sguzman/manifoldr/actions/runs/38807151269) and the [release build](https://github.com/sguzman/manifoldr/actions/runs/38807151171) passed. Optional offline REST caching and full valuation reconciliation remain future enhancements.
+
+## Verified Linux binary
+
+Download [v0.2.0 for GNU/Linux x86-64](https://github.com/sguzman/manifoldr/releases/download/v0.2.0/manifoldr-linux-x86_64.tar.gz), together with its [SHA256SUMS](https://github.com/sguzman/manifoldr/releases/download/v0.2.0/SHA256SUMS). Verify the checksum before extracting and running the binary.
 
 ## Build
 
@@ -145,7 +149,7 @@ The output is **NDJSON**: one compact JSON object per broadcast line. This can b
 
 ## Building release artifacts
 
-Version 0.2.0 is the Rust CLI/library stabilization milestone. The [Linux Binary workflow](.github/workflows/release.yml) builds a release-mode x86-64 GNU/Linux binary, archives it and publishes SHA256 checksums as a workflow artifact on every main-branch push. The workflow publishes `v0.2.0` once after its full build/test checks pass, and newer `v*` tags trigger subsequent GitHub Releases. The release workflow runs offline automated tests but intentionally never executes real account writes.
+Version 0.2.0 is the published Rust CLI/library stabilization release. The [Linux Binary workflow](.github/workflows/release.yml) builds a release-mode x86-64 GNU/Linux binary, archives it and publishes SHA256 checksums as a workflow artifact on every main-branch push. The workflow publishes `v0.2.0` once after its full build/test checks pass, and newer `v*` tags trigger subsequent GitHub Releases. The release workflow runs offline automated tests but intentionally never executes real account writes.
 
 This release does **not** yet include a persistent local REST cache or historical synchronization engine; a stream can already be recorded to NDJSON via shell redirection.
 
