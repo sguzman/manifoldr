@@ -3,7 +3,7 @@
 ## 0.4.0 — MCP server released (2026-10-15)
 
 - Added a native Rust MCP Streamable HTTP server using the official rmcp SDK.
-- Added eight read-only agent tools for popular, trending and high-volume markets, custom search, suggested market ranking, topics, market details and bulk probabilities.
+- Added nine read-only agent tools for popular, trending and high-volume markets, custom search, suggested market ranking, topics, market details and bulk probabilities.
 - Stateless HTTP endpoint shared between local and LAN agents; no account credentials or trading tools.
 - Added local HTTP protocol tests (initialize, tools/list, tools/call, Origin rejection) using a mock API server.
 - Added systemd --user LAN service template, health endpoint and deployment docs.
