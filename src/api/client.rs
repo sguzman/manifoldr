@@ -1,4 +1,3 @@
-use anyhow::{Context, Result, bail};
 use reqwest::{Client, StatusCode, header};
 use serde::Serialize;
 use std::time::Duration;
@@ -13,17 +12,36 @@ const MAX_GET_ATTEMPTS: u32 = 3;
 pub enum ApiError {
     #[error("Manifold API returned HTTP {status}: {body}")]
     Http { status: StatusCode, body: String },
+    #[error("Invalid Manifold request: {0}")]
+    InvalidInput(String),
+    #[error("Manifold client configuration error: {0}")]
+    Configuration(&'static str),
+    #[error("Transport error for {endpoint}: {source}")]
+    Transport { endpoint: String, #[source] source: reqwest::Error },
+    #[error("Response decoding failed for {endpoint}: {source}")]
+    Decode { endpoint: String, #[source] source: reqwest::Error },
+}
+pub type ApiResult<T> = std::result::Result<T, ApiError>;
+
+impl ApiError {
+    pub fn status(&self) -> Option<StatusCode> {
+        match self {
+            Self::Http { status, .. } => Some(*status),
+            _ => None,
+        }
+    }
 }
 
 /// Only a missing username permits falling back to lookup by ID.
-pub fn is_not_found(error: &anyhow::Error) -> bool {
-    matches!(
-        error.downcast_ref::<ApiError>(),
-        Some(ApiError::Http {
-            status: StatusCode::NOT_FOUND,
-            ..
-        })
-    )
+pub fn is_not_found(error: &ApiError) -> bool {
+    error.status() == Some(StatusCode::NOT_FOUND)
+}
+
+fn bounded_limit(n: i32, name: &str) -> ApiResult<()> {
+    if !(1..=1000).contains(&n) {
+        return Err(ApiError::InvalidInput(format!("{name} must be between 1 and 1000")));
+    }
+    Ok(())
 }
 
 pub struct ManifoldClient {
@@ -32,17 +50,17 @@ pub struct ManifoldClient {
 }
 
 impl ManifoldClient {
-    pub fn new(api_key: Option<String>) -> Result<Self> {
+    pub fn new(api_key: Option<String>) -> ApiResult<Self> {
         Self::with_base_url(api_key, BASE_URL)
     }
 
     /// Custom base URLs are primarily intended for testing. Never send real
     /// API credentials to an untrusted URL.
-    pub fn with_base_url(api_key: Option<String>, base_url: &str) -> Result<Self> {
+    pub fn with_base_url(api_key: Option<String>, base_url: &str) -> ApiResult<Self> {
         let mut headers = header::HeaderMap::new();
         if let Some(key) = api_key {
             let mut value = header::HeaderValue::from_str(&format!("Key {key}"))
-                .context("Invalid API key header format")?;
+                .map_err(|_| ApiError::Configuration("invalid API key header"))?;
             value.set_sensitive(true);
             headers.insert(header::AUTHORIZATION, value);
         }
@@ -52,7 +70,7 @@ impl ManifoldClient {
             .connect_timeout(Duration::from_secs(10))
             .timeout(Duration::from_secs(30))
             .build()
-            .context("Failed to construct HTTP client")?;
+            .map_err(|source| ApiError::Transport { endpoint: "HTTP client initialization".into(), source })?;
 
         Ok(Self {
             client,
@@ -62,7 +80,7 @@ impl ManifoldClient {
 
     /// Retry only idempotent GETs on transient gateway/connectivity errors.
     /// Never retry 429 automatically: callers must reduce request frequency.
-    async fn get<T>(&self, endpoint: &str, query: Option<&[(&str, String)]>) -> Result<T>
+    async fn get<T>(&self, endpoint: &str, query: Option<&[(&str, String)]>) -> ApiResult<T>
     where
         T: serde::de::DeserializeOwned,
     {
@@ -85,27 +103,26 @@ impl ManifoldClient {
                         return Err(ApiError::Http {
                             status,
                             body: body.chars().take(1200).collect(),
-                        }
-                        .into());
+                        });
                     }
                     return response
                         .json::<T>()
                         .await
-                        .with_context(|| format!("Invalid response from GET /{endpoint}"));
+                        .map_err(|source| ApiError::Decode { endpoint: format!("GET /{endpoint}"), source });
                 }
                 Err(err)
                     if (err.is_connect() || err.is_timeout()) && attempt + 1 < MAX_GET_ATTEMPTS =>
                 {
                     tokio::time::sleep(Duration::from_millis(400 * 2_u64.pow(attempt))).await;
                 }
-                Err(err) => return Err(err).with_context(|| format!("GET /{endpoint} failed")),
+                Err(source) => return Err(ApiError::Transport { endpoint: format!("GET /{endpoint}"), source }),
             }
         }
         unreachable!("GET retry loop must return or fail")
     }
 
     /// POSTs are never retried: repeating a trade can create duplicate orders.
-    async fn post<T, B>(&self, endpoint: &str, body: B) -> Result<T>
+    async fn post<T, B>(&self, endpoint: &str, body: B) -> ApiResult<T>
     where
         T: serde::de::DeserializeOwned,
         B: Serialize,
@@ -118,27 +135,24 @@ impl ManifoldClient {
             .json(&body)
             .send()
             .await
-            .with_context(|| format!("POST /{endpoint} failed"))?;
+            .map_err(|source| ApiError::Transport { endpoint: format!("POST /{endpoint}"), source })?;
         let status = response.status();
         if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
             return Err(ApiError::Http {
                 status,
                 body: body.chars().take(1200).collect(),
-            }
-            .into());
+            });
         }
         response
             .json::<T>()
             .await
-            .with_context(|| format!("Invalid response from POST /{endpoint}"))
+            .map_err(|source| ApiError::Decode { endpoint: format!("POST /{endpoint}"), source })
     }
 
     /// All public users, paged by the final user's ID from the previous page.
-    pub async fn list_users(&self, limit: i32, before: Option<&str>) -> Result<Vec<User>> {
-        if !(1..=1000).contains(&limit) {
-            bail!("User limit must be between 1 and 1000");
-        }
+    pub async fn list_users(&self, limit: i32, before: Option<&str>) -> ApiResult<Vec<User>> {
+        bounded_limit(limit, "User limit")?;
         let mut query = vec![("limit", limit.to_string())];
         if let Some(cursor) = before {
             query.push(("before", cursor.to_owned()));
@@ -147,28 +161,28 @@ impl ManifoldClient {
     }
 
     /// Public topics are returned in pages of up to 500, with a time cursor.
-    pub async fn list_groups(&self, before_time: Option<i64>) -> Result<Vec<Group>> {
+    pub async fn list_groups(&self, before_time: Option<i64>) -> ApiResult<Vec<Group>> {
         let query = before_time.map(|n| vec![("beforeTime", n.to_string())]);
         self.get("groups", query.as_deref()).await
     }
 
-    pub async fn get_group_by_slug(&self, slug: &str) -> Result<Group> {
+    pub async fn get_group_by_slug(&self, slug: &str) -> ApiResult<Group> {
         self.get(&format!("group/{slug}"), None).await
     }
 
-    pub async fn get_me(&self) -> Result<User> {
+    pub async fn get_me(&self) -> ApiResult<User> {
         self.get("me", None).await
     }
 
-    pub async fn get_user_by_username(&self, username: &str) -> Result<User> {
+    pub async fn get_user_by_username(&self, username: &str) -> ApiResult<User> {
         self.get(&format!("user/{username}"), None).await
     }
 
-    pub async fn get_user_by_id(&self, id: &str) -> Result<User> {
+    pub async fn get_user_by_id(&self, id: &str) -> ApiResult<User> {
         self.get(&format!("user/by-id/{id}"), None).await
     }
 
-    pub async fn get_user_portfolio(&self, user_id: &str) -> Result<LivePortfolioMetrics> {
+    pub async fn get_user_portfolio(&self, user_id: &str) -> ApiResult<LivePortfolioMetrics> {
         self.get(
             "get-user-portfolio",
             Some(&[("userId", user_id.to_owned())]),
@@ -180,7 +194,7 @@ impl ManifoldClient {
         &self,
         user_id: &str,
         period: &str,
-    ) -> Result<Vec<PortfolioMetrics>> {
+    ) -> ApiResult<Vec<PortfolioMetrics>> {
         self.get(
             "get-user-portfolio-history",
             Some(&[
@@ -195,7 +209,7 @@ impl ManifoldClient {
         &self,
         user_id: &str,
         limit: i32,
-    ) -> Result<UserContractMetricsResponse> {
+    ) -> ApiResult<UserContractMetricsResponse> {
         self.get(
             "get-user-contract-metrics-with-contracts",
             Some(&[("userId", user_id.to_owned()), ("limit", limit.to_string())]),
@@ -208,7 +222,7 @@ impl ManifoldClient {
         market_id: &str,
         top: Option<i32>,
         bottom: Option<i32>,
-    ) -> Result<Vec<ContractMetric>> {
+    ) -> ApiResult<Vec<ContractMetric>> {
         let mut query = Vec::new();
         if let Some(n) = top {
             query.push(("top", n.to_string()));
@@ -226,7 +240,7 @@ impl ManifoldClient {
         sort: Option<&str>,
         order: Option<&str>,
         before: Option<&str>,
-    ) -> Result<Vec<LiteMarket>> {
+    ) -> ApiResult<Vec<LiteMarket>> {
         let mut query = Vec::new();
         if let Some(n) = limit {
             query.push(("limit", n.to_string()));
@@ -249,7 +263,7 @@ impl ManifoldClient {
         limit: Option<i32>,
         sort: Option<&str>,
         filter: Option<&str>,
-    ) -> Result<Vec<LiteMarket>> {
+    ) -> ApiResult<Vec<LiteMarket>> {
         self.search_markets_with_cursor(term, limit, sort, filter, None)
             .await
     }
@@ -262,9 +276,12 @@ impl ManifoldClient {
         sort: Option<&str>,
         filter: Option<&str>,
         before_time: Option<i64>,
-    ) -> Result<Vec<LiteMarket>> {
+    ) -> ApiResult<Vec<LiteMarket>> {
         if before_time.is_some() && sort != Some("newest") {
-            bail!("beforeTime is only supported with sort=newest");
+            return Err(ApiError::InvalidInput("beforeTime is only supported with sort=newest".into()));
+        }
+        if let Some(n) = limit {
+            bounded_limit(n, "Search limit")?;
         }
         let mut query = vec![("term", term.to_owned())];
         if let Some(n) = limit {
@@ -282,24 +299,24 @@ impl ManifoldClient {
         self.get("search-markets", Some(&query)).await
     }
 
-    pub async fn get_market_by_id(&self, id: &str) -> Result<FullMarket> {
+    pub async fn get_market_by_id(&self, id: &str) -> ApiResult<FullMarket> {
         self.get(&format!("market/{id}"), None).await
     }
 
-    pub async fn get_market_by_slug(&self, slug: &str) -> Result<FullMarket> {
+    pub async fn get_market_by_slug(&self, slug: &str) -> ApiResult<FullMarket> {
         self.get(&format!("slug/{slug}"), None).await
     }
 
-    pub async fn market_probability(&self, id: &str) -> Result<serde_json::Value> {
+    pub async fn market_probability(&self, id: &str) -> ApiResult<serde_json::Value> {
         if id.trim().is_empty() {
-            bail!("Market ID cannot be empty");
+            return Err(ApiError::InvalidInput("Market ID cannot be empty".into()));
         }
         self.get(&format!("market/{id}/prob"), None).await
     }
 
-    pub async fn market_probabilities(&self, ids: &[String]) -> Result<serde_json::Value> {
+    pub async fn market_probabilities(&self, ids: &[String]) -> ApiResult<serde_json::Value> {
         if ids.is_empty() || ids.len() > 100 || ids.iter().any(|id| id.trim().is_empty()) {
-            bail!("Supply 1 to 100 nonempty market IDs");
+            return Err(ApiError::InvalidInput("Supply 1 to 100 nonempty market IDs".into()));
         }
         let query: Vec<(&str, String)> = ids.iter().map(|id| ("ids", id.clone())).collect();
         self.get("market-probs", Some(&query)).await
@@ -311,7 +328,7 @@ impl ManifoldClient {
         amount: f64,
         outcome: &str,
         execute: bool,
-    ) -> Result<serde_json::Value> {
+    ) -> ApiResult<serde_json::Value> {
         validate_bet(amount, outcome)?;
         #[derive(Serialize)]
         #[serde(rename_all = "camelCase")]
@@ -338,7 +355,7 @@ impl ManifoldClient {
         user_id: Option<&str>,
         market_id: Option<&str>,
         limit: Option<i32>,
-    ) -> Result<Vec<Bet>> {
+    ) -> ApiResult<Vec<Bet>> {
         self.list_bets_with_cursor(user_id, market_id, limit, None, None)
             .await
     }
@@ -351,12 +368,12 @@ impl ManifoldClient {
         limit: Option<i32>,
         before: Option<&str>,
         after: Option<&str>,
-    ) -> Result<Vec<Bet>> {
+    ) -> ApiResult<Vec<Bet>> {
         if before.is_some() && after.is_some() {
-            bail!("Use only one of before or after");
+            return Err(ApiError::InvalidInput("Use only one of before or after".into()));
         }
-        if limit.is_some_and(|n| !(1..=1000).contains(&n)) {
-            bail!("Bet limit must be between 1 and 1000");
+        if let Some(n) = limit {
+            bounded_limit(n, "Bet limit")?;
         }
         let mut query = Vec::new();
         if let Some(id) = user_id {
@@ -378,12 +395,12 @@ impl ManifoldClient {
     }
 }
 
-pub(crate) fn validate_bet(amount: f64, outcome: &str) -> Result<()> {
+pub(crate) fn validate_bet(amount: f64, outcome: &str) -> ApiResult<()> {
     if !amount.is_finite() || amount <= 0.0 {
-        bail!("Bet amount must be a finite, positive number");
+        return Err(ApiError::InvalidInput("Bet amount must be a finite, positive number".into()));
     }
     if !matches!(outcome, "YES" | "NO") {
-        bail!("Binary bet outcome must be YES or NO");
+        return Err(ApiError::InvalidInput("Binary bet outcome must be YES or NO".into()));
     }
     Ok(())
 }

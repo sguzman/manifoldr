@@ -38,7 +38,7 @@ async fn resolve_user_id(client: &ManifoldClient, identifier: Option<String>) ->
         match client.get_user_by_username(&identifier).await {
             Ok(user) => Ok(user.id),
             Err(err) if is_not_found(&err) => Ok(client.get_user_by_id(&identifier).await?.id),
-            Err(err) => Err(err),
+            Err(err) => Err(err.into()),
         }
     } else {
         Ok(client.get_me().await?.id)
@@ -74,7 +74,7 @@ async fn handle_user_command(
             let user = match client.get_user_by_username(&username_or_id).await {
                 Ok(user) => user,
                 Err(err) if is_not_found(&err) => client.get_user_by_id(&username_or_id).await?,
-                Err(err) => return Err(err),
+                Err(err) => return Err(err.into()),
             };
             if json {
                 print_json(&user)?;

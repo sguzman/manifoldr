@@ -1,6 +1,6 @@
 //! All transport-contract tests run against an ephemeral local TCP server.
 //! No real credentials, orders or public network requests are used.
-use manifoldr::api::client::{ManifoldClient, is_not_found};
+use manifoldr::api::client::{ApiError, ManifoldClient, is_not_found};
 use serde_json::Value;
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -177,4 +177,22 @@ async fn missing_user_reports_status_without_leaking_transport_details() {
 #[test]
 fn bad_api_key_returns_an_error_not_a_panic() {
     assert!(ManifoldClient::new(Some("invalid\nkey".to_owned())).is_err());
+}
+
+#[tokio::test]
+async fn rate_limit_error_is_typed_and_never_retried() {
+    let (url, requests) = mock_server(vec![("429 Too Many Requests", r#"{"error":"slow down"}"#)]).await;
+    let client = ManifoldClient::with_base_url(None, &url).unwrap();
+    let err = client.list_users(1, None).await.unwrap_err();
+    assert!(matches!(err, ApiError::Http { status: reqwest::StatusCode::TOO_MANY_REQUESTS, .. }));
+    assert_eq!(request_lines(&requests).len(), 1);
+}
+
+#[tokio::test]
+async fn validation_error_is_typed_and_never_sends_request() {
+    let (url, requests) = mock_server(vec![]).await;
+    let client = ManifoldClient::with_base_url(None, &url).unwrap();
+    let err = client.list_users(0, None).await.unwrap_err();
+    assert!(matches!(err, ApiError::InvalidInput(_)));
+    assert!(request_lines(&requests).is_empty());
 }
