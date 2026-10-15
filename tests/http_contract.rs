@@ -181,10 +181,17 @@ fn bad_api_key_returns_an_error_not_a_panic() {
 
 #[tokio::test]
 async fn rate_limit_error_is_typed_and_never_retried() {
-    let (url, requests) = mock_server(vec![("429 Too Many Requests", r#"{"error":"slow down"}"#)]).await;
+    let (url, requests) =
+        mock_server(vec![("429 Too Many Requests", r#"{"error":"slow down"}"#)]).await;
     let client = ManifoldClient::with_base_url(None, &url).unwrap();
     let err = client.list_users(1, None).await.unwrap_err();
-    assert!(matches!(err, ApiError::Http { status: reqwest::StatusCode::TOO_MANY_REQUESTS, .. }));
+    assert!(matches!(
+        err,
+        ApiError::Http {
+            status: reqwest::StatusCode::TOO_MANY_REQUESTS,
+            ..
+        }
+    ));
     assert_eq!(request_lines(&requests).len(), 1);
 }
 
@@ -199,12 +206,25 @@ async fn validation_error_is_typed_and_never_sends_request() {
 
 #[tokio::test]
 async fn position_offset_order_and_per_answer_are_sent() {
-    let (url, requests) = mock_server(vec![("200 OK", r#"{"metricsByContract":{},"contracts":[]}"#)]).await;
+    let (url, requests) = mock_server(vec![(
+        "200 OK",
+        r#"{"metricsByContract":{},"contracts":[]}"#,
+    )])
+    .await;
     let client = ManifoldClient::with_base_url(None, &url).unwrap();
-    let page = client.get_user_contract_metrics_page("user1", 25, 50, Some("profit"), true).await.unwrap();
+    let page = client
+        .get_user_contract_metrics_page("user1", 25, 50, Some("profit"), true)
+        .await
+        .unwrap();
     assert!(page.contracts.is_empty());
     let line = &request_lines(&requests)[0];
-    for part in ["userId=user1","limit=25","offset=50","order=profit","perAnswer=true"] {
+    for part in [
+        "userId=user1",
+        "limit=25",
+        "offset=50",
+        "order=profit",
+        "perAnswer=true",
+    ] {
         assert!(line.contains(part), "missing {part} from {line}");
     }
 }
@@ -213,10 +233,20 @@ async fn position_offset_order_and_per_answer_are_sent() {
 async fn market_creator_topic_filters_are_sent() {
     let (url, requests) = mock_server(vec![("200 OK", "[]")]).await;
     let client = ManifoldClient::with_base_url(None, &url).unwrap();
-    let page = client.list_markets_filtered(Some(5), None, None, Some("last"), Some("user1"), Some("topic1")).await.unwrap();
+    let page = client
+        .list_markets_filtered(
+            Some(5),
+            None,
+            None,
+            Some("last"),
+            Some("user1"),
+            Some("topic1"),
+        )
+        .await
+        .unwrap();
     assert!(page.is_empty());
     let line = &request_lines(&requests)[0];
-    for part in ["limit=5","before=last","userId=user1","groupId=topic1"] {
+    for part in ["limit=5", "before=last", "userId=user1", "groupId=topic1"] {
         assert!(line.contains(part), "missing {part} from {line}");
     }
 }
@@ -225,9 +255,22 @@ async fn market_creator_topic_filters_are_sent() {
 async fn invalid_page_options_never_contact_api() {
     let (url, requests) = mock_server(vec![]).await;
     let client = ManifoldClient::with_base_url(None, &url).unwrap();
-    let err = client.get_user_contract_metrics_page("user1", 10, 0, Some("unknown"), false).await.unwrap_err();
+    let err = client
+        .get_user_contract_metrics_page("user1", 10, 0, Some("unknown"), false)
+        .await
+        .unwrap_err();
     assert!(matches!(err, ApiError::InvalidInput(_)));
-    assert!(client.list_markets(Some(1001), None, None, None).await.is_err());
-    assert!(client.get_user_portfolio_history("user1", "yearly").await.is_err());
+    assert!(
+        client
+            .list_markets(Some(1001), None, None, None)
+            .await
+            .is_err()
+    );
+    assert!(
+        client
+            .get_user_portfolio_history("user1", "yearly")
+            .await
+            .is_err()
+    );
     assert!(request_lines(&requests).is_empty());
 }

@@ -17,9 +17,17 @@ pub enum ApiError {
     #[error("Manifold client configuration error: {0}")]
     Configuration(&'static str),
     #[error("Transport error for {endpoint}: {source}")]
-    Transport { endpoint: String, #[source] source: reqwest::Error },
+    Transport {
+        endpoint: String,
+        #[source]
+        source: reqwest::Error,
+    },
     #[error("Response decoding failed for {endpoint}: {source}")]
-    Decode { endpoint: String, #[source] source: reqwest::Error },
+    Decode {
+        endpoint: String,
+        #[source]
+        source: reqwest::Error,
+    },
 }
 pub type ApiResult<T> = std::result::Result<T, ApiError>;
 
@@ -39,7 +47,9 @@ pub fn is_not_found(error: &ApiError) -> bool {
 
 fn bounded_limit(n: i32, name: &str) -> ApiResult<()> {
     if !(1..=1000).contains(&n) {
-        return Err(ApiError::InvalidInput(format!("{name} must be between 1 and 1000")));
+        return Err(ApiError::InvalidInput(format!(
+            "{name} must be between 1 and 1000"
+        )));
     }
     Ok(())
 }
@@ -70,7 +80,10 @@ impl ManifoldClient {
             .connect_timeout(Duration::from_secs(10))
             .timeout(Duration::from_secs(30))
             .build()
-            .map_err(|source| ApiError::Transport { endpoint: "HTTP client initialization".into(), source })?;
+            .map_err(|source| ApiError::Transport {
+                endpoint: "HTTP client initialization".into(),
+                source,
+            })?;
 
         Ok(Self {
             client,
@@ -108,14 +121,22 @@ impl ManifoldClient {
                     return response
                         .json::<T>()
                         .await
-                        .map_err(|source| ApiError::Decode { endpoint: format!("GET /{endpoint}"), source });
+                        .map_err(|source| ApiError::Decode {
+                            endpoint: format!("GET /{endpoint}"),
+                            source,
+                        });
                 }
                 Err(err)
                     if (err.is_connect() || err.is_timeout()) && attempt + 1 < MAX_GET_ATTEMPTS =>
                 {
                     tokio::time::sleep(Duration::from_millis(400 * 2_u64.pow(attempt))).await;
                 }
-                Err(source) => return Err(ApiError::Transport { endpoint: format!("GET /{endpoint}"), source }),
+                Err(source) => {
+                    return Err(ApiError::Transport {
+                        endpoint: format!("GET /{endpoint}"),
+                        source,
+                    });
+                }
             }
         }
         unreachable!("GET retry loop must return or fail")
@@ -135,7 +156,10 @@ impl ManifoldClient {
             .json(&body)
             .send()
             .await
-            .map_err(|source| ApiError::Transport { endpoint: format!("POST /{endpoint}"), source })?;
+            .map_err(|source| ApiError::Transport {
+                endpoint: format!("POST /{endpoint}"),
+                source,
+            })?;
         let status = response.status();
         if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
@@ -147,7 +171,10 @@ impl ManifoldClient {
         response
             .json::<T>()
             .await
-            .map_err(|source| ApiError::Decode { endpoint: format!("POST /{endpoint}"), source })
+            .map_err(|source| ApiError::Decode {
+                endpoint: format!("POST /{endpoint}"),
+                source,
+            })
     }
 
     /// All public users, paged by the final user's ID from the previous page.
@@ -196,7 +223,9 @@ impl ManifoldClient {
         period: &str,
     ) -> ApiResult<Vec<PortfolioMetrics>> {
         if !matches!(period, "daily" | "weekly" | "monthly" | "allTime") {
-            return Err(ApiError::InvalidInput("period must be daily, weekly, monthly, or allTime".into()));
+            return Err(ApiError::InvalidInput(
+                "period must be daily, weekly, monthly, or allTime".into(),
+            ));
         }
         self.get(
             "get-user-portfolio-history",
@@ -213,7 +242,8 @@ impl ManifoldClient {
         user_id: &str,
         limit: i32,
     ) -> ApiResult<UserContractMetricsResponse> {
-        self.get_user_contract_metrics_page(user_id, limit, 0, None, false).await
+        self.get_user_contract_metrics_page(user_id, limit, 0, None, false)
+            .await
     }
 
     /// The response covers only the requested page, not the full account.
@@ -228,7 +258,9 @@ impl ManifoldClient {
     ) -> ApiResult<UserContractMetricsResponse> {
         bounded_limit(limit, "Position limit")?;
         if order.is_some_and(|o| !matches!(o, "lastBetTime" | "profit")) {
-            return Err(ApiError::InvalidInput("order must be lastBetTime or profit".into()));
+            return Err(ApiError::InvalidInput(
+                "order must be lastBetTime or profit".into(),
+            ));
         }
         let mut query = vec![
             ("userId", user_id.to_owned()),
@@ -239,7 +271,8 @@ impl ManifoldClient {
         if let Some(o) = order {
             query.push(("order", o.to_owned()));
         }
-        self.get("get-user-contract-metrics-with-contracts", Some(&query)).await
+        self.get("get-user-contract-metrics-with-contracts", Some(&query))
+            .await
     }
 
     pub async fn get_market_positions(
@@ -266,7 +299,8 @@ impl ManifoldClient {
         order: Option<&str>,
         before: Option<&str>,
     ) -> ApiResult<Vec<LiteMarket>> {
-        self.list_markets_filtered(limit, sort, order, before, None, None).await
+        self.list_markets_filtered(limit, sort, order, before, None, None)
+            .await
     }
 
     /// Market list filtering supports creator and topic IDs.
@@ -279,7 +313,9 @@ impl ManifoldClient {
         user_id: Option<&str>,
         group_id: Option<&str>,
     ) -> ApiResult<Vec<LiteMarket>> {
-        if let Some(n) = limit { bounded_limit(n, "Market limit")?; }
+        if let Some(n) = limit {
+            bounded_limit(n, "Market limit")?;
+        }
         let mut query = Vec::new();
         if let Some(n) = limit {
             query.push(("limit", n.to_string()));
@@ -293,8 +329,12 @@ impl ManifoldClient {
         if let Some(s) = before {
             query.push(("before", s.to_owned()));
         }
-        if let Some(id) = user_id { query.push(("userId", id.to_owned())); }
-        if let Some(id) = group_id { query.push(("groupId", id.to_owned())); }
+        if let Some(id) = user_id {
+            query.push(("userId", id.to_owned()));
+        }
+        if let Some(id) = group_id {
+            query.push(("groupId", id.to_owned()));
+        }
         self.get("markets", Some(&query)).await
     }
 
@@ -319,7 +359,9 @@ impl ManifoldClient {
         before_time: Option<i64>,
     ) -> ApiResult<Vec<LiteMarket>> {
         if before_time.is_some() && sort != Some("newest") {
-            return Err(ApiError::InvalidInput("beforeTime is only supported with sort=newest".into()));
+            return Err(ApiError::InvalidInput(
+                "beforeTime is only supported with sort=newest".into(),
+            ));
         }
         if let Some(n) = limit {
             bounded_limit(n, "Search limit")?;
@@ -357,7 +399,9 @@ impl ManifoldClient {
 
     pub async fn market_probabilities(&self, ids: &[String]) -> ApiResult<serde_json::Value> {
         if ids.is_empty() || ids.len() > 100 || ids.iter().any(|id| id.trim().is_empty()) {
-            return Err(ApiError::InvalidInput("Supply 1 to 100 nonempty market IDs".into()));
+            return Err(ApiError::InvalidInput(
+                "Supply 1 to 100 nonempty market IDs".into(),
+            ));
         }
         let query: Vec<(&str, String)> = ids.iter().map(|id| ("ids", id.clone())).collect();
         self.get("market-probs", Some(&query)).await
@@ -411,7 +455,9 @@ impl ManifoldClient {
         after: Option<&str>,
     ) -> ApiResult<Vec<Bet>> {
         if before.is_some() && after.is_some() {
-            return Err(ApiError::InvalidInput("Use only one of before or after".into()));
+            return Err(ApiError::InvalidInput(
+                "Use only one of before or after".into(),
+            ));
         }
         if let Some(n) = limit {
             bounded_limit(n, "Bet limit")?;
@@ -438,10 +484,14 @@ impl ManifoldClient {
 
 pub(crate) fn validate_bet(amount: f64, outcome: &str) -> ApiResult<()> {
     if !amount.is_finite() || amount <= 0.0 {
-        return Err(ApiError::InvalidInput("Bet amount must be a finite, positive number".into()));
+        return Err(ApiError::InvalidInput(
+            "Bet amount must be a finite, positive number".into(),
+        ));
     }
     if !matches!(outcome, "YES" | "NO") {
-        return Err(ApiError::InvalidInput("Binary bet outcome must be YES or NO".into()));
+        return Err(ApiError::InvalidInput(
+            "Binary bet outcome must be YES or NO".into(),
+        ));
     }
     Ok(())
 }

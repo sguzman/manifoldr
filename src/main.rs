@@ -76,7 +76,9 @@ async fn handle_user_command(
             } else {
                 match client.get_user_by_username(&username_or_id).await {
                     Ok(user) => user,
-                    Err(err) if is_not_found(&err) => client.get_user_by_id(&username_or_id).await?,
+                    Err(err) if is_not_found(&err) => {
+                        client.get_user_by_id(&username_or_id).await?
+                    }
                     Err(err) => return Err(err.into()),
                 }
             };
@@ -129,7 +131,15 @@ async fn handle_user_command(
                 let fetch_limit =
                     limit.max(display_limit.unwrap_or(0).min(i32::MAX as usize) as i32);
                 info!(id, fetch_limit, "Fetching positions");
-                let response = client.get_user_contract_metrics_page(&id, fetch_limit, offset, Some(&order), per_answer).await?;
+                let response = client
+                    .get_user_contract_metrics_page(
+                        &id,
+                        fetch_limit,
+                        offset,
+                        Some(&order),
+                        per_answer,
+                    )
+                    .await?;
                 if json {
                     print_json(&response)?;
                 } else {
@@ -145,7 +155,11 @@ async fn handle_user_command(
                     } else {
                         groups.sort_by(|a, b| {
                             let last = |group: &Vec<ContractMetric>| -> i64 {
-                                group.iter().filter_map(|m| m.last_bet_time).max().unwrap_or(0)
+                                group
+                                    .iter()
+                                    .filter_map(|m| m.last_bet_time)
+                                    .max()
+                                    .unwrap_or(0)
                             };
                             last(b).cmp(&last(a))
                         });
