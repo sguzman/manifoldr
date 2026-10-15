@@ -471,24 +471,35 @@ impl ManifoldClient {
         after: Option<&str>,
     ) -> ApiResult<Vec<Bet>> {
         self.list_bets_filtered(BetFilters {
-            user_id, market_id, limit, before, after,
+            user_id,
+            market_id,
+            limit,
+            before,
+            after,
             ..BetFilters::default()
-        }).await
+        })
+        .await
     }
 
     /// Read-only inspection of bet history and open-limit orders.
     pub async fn list_bets_filtered(&self, filters: BetFilters<'_>) -> ApiResult<Vec<Bet>> {
         if filters.before.is_some() && filters.after.is_some() {
-            return Err(ApiError::InvalidInput("Use only one of before or after".into()));
+            return Err(ApiError::InvalidInput(
+                "Use only one of before or after".into(),
+            ));
         }
         if let Some(n) = filters.limit {
             bounded_limit(n, "Bet limit")?;
         }
         if filters.order.is_some_and(|s| !matches!(s, "asc" | "desc")) {
-            return Err(ApiError::InvalidInput("Bet order must be asc or desc".into()));
+            return Err(ApiError::InvalidInput(
+                "Bet order must be asc or desc".into(),
+            ));
         }
         if filters.kinds.is_some_and(|s| s != "open-limit") {
-            return Err(ApiError::InvalidInput("Only kinds=open-limit is supported".into()));
+            return Err(ApiError::InvalidInput(
+                "Only kinds=open-limit is supported".into(),
+            ));
         }
         let mut query = Vec::new();
         for (key, value) in [
@@ -518,8 +529,16 @@ impl ManifoldClient {
     }
 
     /// Preview locally by default; the cancellation endpoint has no dry-run support.
-    pub async fn cancel_limit_order(&self, bet_id: &str, execute: bool) -> ApiResult<serde_json::Value> {
-        if bet_id.is_empty() || !bet_id.bytes().all(|ch| ch.is_ascii_alphanumeric() || ch == b'-' || ch == b'_') {
+    pub async fn cancel_limit_order(
+        &self,
+        bet_id: &str,
+        execute: bool,
+    ) -> ApiResult<serde_json::Value> {
+        if bet_id.is_empty()
+            || !bet_id
+                .bytes()
+                .all(|ch| ch.is_ascii_alphanumeric() || ch == b'-' || ch == b'_')
+        {
             return Err(ApiError::InvalidInput("Invalid bet ID".into()));
         }
         if !execute {
@@ -529,9 +548,9 @@ impl ManifoldClient {
                 "message": "PREVIEW ONLY: nothing sent to Manifold. Add --execute to cancel this order."
             }));
         }
-        self.post(&format!("bet/cancel/{bet_id}"), serde_json::json!({})).await
+        self.post(&format!("bet/cancel/{bet_id}"), serde_json::json!({}))
+            .await
     }
-
 }
 
 pub(crate) fn validate_bet(amount: f64, outcome: &str) -> ApiResult<()> {

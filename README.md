@@ -75,6 +75,10 @@ Examples use the installed `manifoldr` binary. During development, prefix comman
 | `manifoldr market probabilities MARKET_ID [MARKET_ID ...]` | Bulk probability JSON (1–100 IDs) |
 | `manifoldr market positions MARKET_ID --top 20` | Market positions |
 | `manifoldr bet list --user-id USER_ID` | Recent bets |
+| `manifoldr bet list --username USERNAME --open-limit` | Read-only open limit orders |
+| `manifoldr bet list --contract-slug SLUG --before-time UNIX_MS` | Filter bet history |
+| `manifoldr bet cancel BET_ID` | Preview cancellation locally (no network) |
+| `manifoldr bet cancel BET_ID --execute` | **Cancel a real limit order** |
 | `manifoldr bet list --user-id USER_ID --before BET_ID` | Fetch older bets; `--after` fetches newer bets |
 | `manifoldr bet place MARKET_ID 5 YES` | **Simulate** a binary bet |
 
@@ -85,6 +89,12 @@ Examples use the installed `manifoldr` binary. During development, prefix comman
     manifoldr bet place MARKET_ID 5 YES --execute
 
 That command **places a real bet** using your authenticated account. This interface supports `YES` and `NO` outcomes for binary markets; passing another outcome or an invalid amount is rejected before contacting Manifold. The client does not automatically retry POST requests, because repeating a request can create a duplicate order. Always confirm account, market ID, and amount before using `--execute`.
+
+### Order inspection and cancellation
+
+`bet list --open-limit` is read-only. Manifold can include open limit orders from closed or resolved markets. Use `--user-id` or `--username`, `--market-id` or `--contract-slug`, `--before-time`, `--after-time`, and `--order asc|desc` to narrow requests. JSON output exposes optional `orderAmount` and `limitProb` fields.
+
+`bet cancel BET_ID` is a **local preview only**. It sends no request. Manifold does not document a cancellation `dryRun` mode. To actually cancel a limit order, use `bet cancel BET_ID --execute` with authentication. The API is not queried to verify ownership or order status before execution. **Cancellation POSTs are not retried.** If an executed cancellation times out, inspect current order state before attempting it again. Neither real cancellations nor real trades are executed by automated tests.
 
 ### JSON output and monitoring
 
@@ -137,7 +147,7 @@ Manifold documentation: https://docs.manifold.markets/api
 - Incomplete endpoint coverage, no WebSocket client or persistent offline cache yet.
 - User identifiers are attempted as usernames first, then as IDs only on HTTP 404. `user get --id` bypasses username lookup.
 - API schema changes can still break parsing; please retain non-sensitive fixture samples for regressions.
-- Only binary YES/NO bets are exposed in this CLI; advanced orders, cancellation and multi-answer trading are not yet implemented.
+- Only binary YES/NO bets can be placed. Read-only open-limit inspection and explicitly opted-in cancellation are available; share-selling, advanced order creation and multi-answer trading remain unimplemented.
 - No independent portfolio price oracle or per-asset/accounting reconciliation.
 
 See [ROADMAP.md](ROADMAP.md), [SECURITY.md](SECURITY.md) and [CHANGELOG.md](CHANGELOG.md).

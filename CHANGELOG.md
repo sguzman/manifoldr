@@ -4,6 +4,10 @@
 
 ### Added (P1 underway)
 
+- Read-only open-limit order inspection and expanded bet filters (username, market slug, timestamp, order).
+- Local-only `bet cancel BET_ID` preview; real cancellation POST requires `--execute`, validates the ID and never retries.
+- Optional `orderAmount` and `limitProb` bet fields and four new offline HTTP contract tests.
+
 - Public `ApiResult<T>` with typed API error variants and HTTP status inspection, distinguishing throttling from decoding or network failures.
 - Portfolio contract pagination (`--offset`, `--order`, `--per-answer`) and creator/topic filters for market listing.
 - Direct immutable-ID user lookups with `user get --id`, preserving existing username-first fallback.

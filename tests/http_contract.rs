@@ -275,24 +275,33 @@ async fn invalid_page_options_never_contact_api() {
     assert!(request_lines(&requests).is_empty());
 }
 
-
 #[tokio::test]
 async fn open_limit_filters_emit_query_keys() {
     use manifoldr::api::client::BetFilters;
     let (url, requests) = mock_server(vec![("200 OK", "[]")]).await;
     let client = ManifoldClient::with_base_url(None, &url).unwrap();
-    let result = client.list_bets_filtered(BetFilters {
-        username: Some("sample_trader"),
-        contract_slug: Some("market-slug"),
-        limit: Some(12),
-        kinds: Some("open-limit"),
-        before_time: Some(1706000000000),
-        order: Some("asc"),
-        ..BetFilters::default()
-    }).await.unwrap();
+    let result = client
+        .list_bets_filtered(BetFilters {
+            username: Some("sample_trader"),
+            contract_slug: Some("market-slug"),
+            limit: Some(12),
+            kinds: Some("open-limit"),
+            before_time: Some(1706000000000),
+            order: Some("asc"),
+            ..BetFilters::default()
+        })
+        .await
+        .unwrap();
     assert!(result.is_empty());
     let line = &request_lines(&requests)[0];
-    for term in ["username=sample_trader", "contractSlug=market-slug", "kinds=open-limit", "limit=12", "beforeTime=1706000000000", "order=asc"] {
+    for term in [
+        "username=sample_trader",
+        "contractSlug=market-slug",
+        "kinds=open-limit",
+        "limit=12",
+        "beforeTime=1706000000000",
+        "order=asc",
+    ] {
         assert!(line.contains(term), "missing {term} in {line}");
     }
 }
@@ -304,20 +313,35 @@ async fn cancel_is_local_preview_until_execute() {
     let preview = client.cancel_limit_order("bet_123", false).await.unwrap();
     assert_eq!(preview["executed"], false);
     assert!(request_lines(&requests).is_empty());
-    assert!(client.cancel_limit_order("../injection", true).await.is_err());
+    assert!(
+        client
+            .cancel_limit_order("../injection", true)
+            .await
+            .is_err()
+    );
     assert!(request_lines(&requests).is_empty());
     let result = client.cancel_limit_order("bet_123", true).await.unwrap();
     assert!(result.is_object());
-    assert_eq!(request_lines(&requests), ["POST /v0/bet/cancel/bet_123 HTTP/1.1"]);
+    assert_eq!(
+        request_lines(&requests),
+        ["POST /v0/bet/cancel/bet_123 HTTP/1.1"]
+    );
 }
 
 #[tokio::test]
 async fn cancel_does_not_retry_failed_post() {
-    let (url, requests) = mock_server(vec![("503 Service Unavailable", r#"{"error":"unavailable"}"#)]).await;
+    let (url, requests) = mock_server(vec![(
+        "503 Service Unavailable",
+        r#"{"error":"unavailable"}"#,
+    )])
+    .await;
     let client = ManifoldClient::with_base_url(None, &url).unwrap();
     let err = client.cancel_limit_order("123abc", true).await.unwrap_err();
     assert_eq!(err.status(), Some(reqwest::StatusCode::SERVICE_UNAVAILABLE));
-    assert_eq!(request_lines(&requests), ["POST /v0/bet/cancel/123abc HTTP/1.1"]);
+    assert_eq!(
+        request_lines(&requests),
+        ["POST /v0/bet/cancel/123abc HTTP/1.1"]
+    );
 }
 
 #[tokio::test]
@@ -326,10 +350,23 @@ async fn bad_bet_filters_make_no_requests() {
     let (url, requests) = mock_server(vec![("200 OK", "[]")]).await;
     let client = ManifoldClient::with_base_url(None, &url).unwrap();
     for filters in [
-        BetFilters { before: Some("a"), after: Some("b"), ..BetFilters::default() },
-        BetFilters { kinds: Some("unknown"), ..BetFilters::default() },
-        BetFilters { order: Some("random"), ..BetFilters::default() },
-        BetFilters { limit: Some(1001), ..BetFilters::default() },
+        BetFilters {
+            before: Some("a"),
+            after: Some("b"),
+            ..BetFilters::default()
+        },
+        BetFilters {
+            kinds: Some("unknown"),
+            ..BetFilters::default()
+        },
+        BetFilters {
+            order: Some("random"),
+            ..BetFilters::default()
+        },
+        BetFilters {
+            limit: Some(1001),
+            ..BetFilters::default()
+        },
     ] {
         assert!(client.list_bets_filtered(filters).await.is_err());
     }
