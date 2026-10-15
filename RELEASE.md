@@ -18,8 +18,10 @@ and manual dispatch. It builds a release-mode GNU/Linux x86-64 binary with
 Cargo.lock and packages a tar.gz with a SHA256SUMS file. Its workflow artifact
 is available directly from the run, even without a GitHub Release.
 
-Pushing an approved version tag (for example, v0.2.0 after CI is green) lets
-the same workflow create the public GitHub Release with the archive and hash.
+The workflow performs the full formatting, Clippy, test and release-build
+quality gate, then publishes v0.2.0 once from the main branch if that release
+does not already exist. It never overwrites an existing release. Newer releases
+continue to be published only from approved version tags.
 Do not cut releases from failing CI or publish API credentials.
 
 ## Scope

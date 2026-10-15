@@ -145,7 +145,7 @@ The output is **NDJSON**: one compact JSON object per broadcast line. This can b
 
 ## Building release artifacts
 
-Version 0.2.0 is the Rust CLI/library stabilization milestone. The [Linux Binary workflow](.github/workflows/release.yml) builds a release-mode x86-64 GNU/Linux binary, archives it and publishes SHA256 checksums as a workflow artifact on every main-branch push. Pushing a `v*` tag also triggers publishing to GitHub Releases. The release workflow runs offline automated tests but intentionally never executes real account writes.
+Version 0.2.0 is the Rust CLI/library stabilization milestone. The [Linux Binary workflow](.github/workflows/release.yml) builds a release-mode x86-64 GNU/Linux binary, archives it and publishes SHA256 checksums as a workflow artifact on every main-branch push. The workflow publishes `v0.2.0` once after its full build/test checks pass, and newer `v*` tags trigger subsequent GitHub Releases. The release workflow runs offline automated tests but intentionally never executes real account writes.
 
 This release does **not** yet include a persistent local REST cache or historical synchronization engine; a stream can already be recorded to NDJSON via shell redirection.
 
