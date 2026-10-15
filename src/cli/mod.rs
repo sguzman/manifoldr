@@ -23,6 +23,11 @@ pub enum Commands {
         #[command(subcommand)]
         command: UserCommands,
     },
+    /// Public topic discovery
+    Topic {
+        #[command(subcommand)]
+        command: TopicCommands,
+    },
     /// Market related commands
     Market {
         #[command(subcommand)]
@@ -37,6 +42,13 @@ pub enum Commands {
 
 #[derive(Subcommand, Debug)]
 pub enum UserCommands {
+    /// List public users (cursor is the previous page's final user ID)
+    List {
+        #[arg(long, default_value_t = 20)]
+        limit: i32,
+        #[arg(long)]
+        before: Option<String>,
+    },
     /// Get information about the authenticated user
     Me,
     /// Get information about a specific user
@@ -78,6 +90,17 @@ pub enum UserCommands {
 }
 
 #[derive(Subcommand, Debug)]
+pub enum TopicCommands {
+    /// List public topics using optional millisecond timestamp cursor
+    List {
+        #[arg(long)]
+        before_time: Option<i64>,
+    },
+    /// Get topic by slug
+    Get { slug: String },
+}
+
+#[derive(Subcommand, Debug)]
 pub enum MarketCommands {
     /// List markets
     List {
@@ -100,6 +123,9 @@ pub enum MarketCommands {
         sort: Option<String>,
         #[arg(short, long)]
         filter: Option<String>,
+        /// Unix milliseconds of last result; requires --sort newest
+        #[arg(long)]
+        before_time: Option<i64>,
     },
     /// Get a specific market
     Get {
@@ -108,6 +134,8 @@ pub enum MarketCommands {
         #[arg(short, long)]
         slug: bool,
     },
+    /// Retrieve a market's current probability (or per-answer probabilities)
+    Probability { id: String },
     /// Get probability data for up to 100 market IDs in one API request
     Probabilities {
         #[arg(required = true, num_args = 1..=100)]
@@ -148,5 +176,11 @@ pub enum BetCommands {
         market_id: Option<String>,
         #[arg(short, long, default_value = "10")]
         limit: i32,
+        /// Fetch older bets before the given bet ID
+        #[arg(long, conflicts_with = "after")]
+        before: Option<String>,
+        /// Fetch newer bets after the given bet ID
+        #[arg(long)]
+        after: Option<String>,
     },
 }

@@ -32,11 +32,17 @@ pub struct ManifoldClient {
 }
 
 impl ManifoldClient {
-    pub fn new(api_key: Option<String>) -> Self {
+    pub fn new(api_key: Option<String>) -> Result<Self> {
+        Self::with_base_url(api_key, BASE_URL)
+    }
+
+    /// Custom base URLs are primarily intended for testing. Never send real
+    /// API credentials to an untrusted URL.
+    pub fn with_base_url(api_key: Option<String>, base_url: &str) -> Result<Self> {
         let mut headers = header::HeaderMap::new();
         if let Some(key) = api_key {
             let mut value = header::HeaderValue::from_str(&format!("Key {key}"))
-                .expect("Invalid API key header format");
+                .context("Invalid API key header format")?;
             value.set_sensitive(true);
             headers.insert(header::AUTHORIZATION, value);
         }
@@ -46,12 +52,12 @@ impl ManifoldClient {
             .connect_timeout(Duration::from_secs(10))
             .timeout(Duration::from_secs(30))
             .build()
-            .expect("Failed to construct HTTP client");
+            .context("Failed to construct HTTP client")?;
 
-        Self {
+        Ok(Self {
             client,
-            base_url: BASE_URL.to_string(),
-        }
+            base_url: base_url.trim_end_matches('/').to_string(),
+        })
     }
 
     /// Retry only idempotent GETs on transient gateway/connectivity errors.
@@ -126,6 +132,24 @@ impl ManifoldClient {
             .json::<T>()
             .await
             .with_context(|| format!("Invalid response from POST /{endpoint}"))
+    }
+
+    /// All public users, paged by the final user's ID from the previous page.
+    pub async fn list_users(&self, limit: i32, before: Option<&str>) -> Result<Vec<User>> {
+        if !(1..=1000).contains(&limit) { bail!("User limit must be between 1 and 1000"); }
+        let mut query = vec![("limit", limit.to_string())];
+        if let Some(cursor) = before { query.push(("before", cursor.to_owned())); }
+        self.get("users", Some(&query)).await
+    }
+
+    /// Public topics are returned in pages of up to 500, with a time cursor.
+    pub async fn list_groups(&self, before_time: Option<i64>) -> Result<Vec<Group>> {
+        let query = before_time.map(|n| vec![("beforeTime", n.to_string())]);
+        self.get("groups", query.as_deref()).await
+    }
+
+    pub async fn get_group_by_slug(&self, slug: &str) -> Result<Group> {
+        self.get(&format!("group/{slug}"), None).await
     }
 
     pub async fn get_me(&self) -> Result<User> {
@@ -222,6 +246,21 @@ impl ManifoldClient {
         sort: Option<&str>,
         filter: Option<&str>,
     ) -> Result<Vec<LiteMarket>> {
+        self.search_markets_with_cursor(term, limit, sort, filter, None).await
+    }
+
+    /// For deep pagination, use sort=newest and beforeTime=last.createdTime.
+    pub async fn search_markets_with_cursor(
+        &self,
+        term: &str,
+        limit: Option<i32>,
+        sort: Option<&str>,
+        filter: Option<&str>,
+        before_time: Option<i64>,
+    ) -> Result<Vec<LiteMarket>> {
+        if before_time.is_some() && sort != Some("newest") {
+            bail!("beforeTime is only supported with sort=newest");
+        }
         let mut query = vec![("term", term.to_owned())];
         if let Some(n) = limit {
             query.push(("limit", n.to_string()));
@@ -232,6 +271,7 @@ impl ManifoldClient {
         if let Some(s) = filter {
             query.push(("filter", s.to_owned()));
         }
+        if let Some(n) = before_time { query.push(("beforeTime", n.to_string())); }
         self.get("search-markets", Some(&query)).await
     }
 
@@ -241,6 +281,11 @@ impl ManifoldClient {
 
     pub async fn get_market_by_slug(&self, slug: &str) -> Result<FullMarket> {
         self.get(&format!("slug/{slug}"), None).await
+    }
+
+    pub async fn market_probability(&self, id: &str) -> Result<serde_json::Value> {
+        if id.trim().is_empty() { bail!("Market ID cannot be empty"); }
+        self.get(&format!("market/{id}/prob"), None).await
     }
 
     pub async fn market_probabilities(&self, ids: &[String]) -> Result<serde_json::Value> {
@@ -285,6 +330,20 @@ impl ManifoldClient {
         market_id: Option<&str>,
         limit: Option<i32>,
     ) -> Result<Vec<Bet>> {
+        self.list_bets_with_cursor(user_id, market_id, limit, None, None).await
+    }
+
+    /// Bet ID cursors: before returns older bets, after returns newer bets.
+    pub async fn list_bets_with_cursor(
+        &self,
+        user_id: Option<&str>,
+        market_id: Option<&str>,
+        limit: Option<i32>,
+        before: Option<&str>,
+        after: Option<&str>,
+    ) -> Result<Vec<Bet>> {
+        if before.is_some() && after.is_some() { bail!("Use only one of before or after"); }
+        if let Some(n) = limit { if !(1..=1000).contains(&n) { bail!("Bet limit must be between 1 and 1000"); } }
         let mut query = Vec::new();
         if let Some(id) = user_id {
             query.push(("userId", id.to_owned()));
@@ -295,6 +354,8 @@ impl ManifoldClient {
         if let Some(n) = limit {
             query.push(("limit", n.to_string()));
         }
+        if let Some(id) = before { query.push(("before", id.to_owned())); }
+        if let Some(id) = after { query.push(("after", id.to_owned())); }
         self.get("bets", Some(&query)).await
     }
 }

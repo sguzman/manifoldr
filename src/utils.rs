@@ -1,4 +1,4 @@
-use crate::api::models::*;
+use manifoldr::api::models::*;
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::{Attribute, Cell, Color, ContentArrangement, Table};
 

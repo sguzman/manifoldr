@@ -1,16 +1,12 @@
-mod api;
 mod cli;
-#[cfg(test)]
-#[path = "tests.rs"]
-mod fixture_tests;
 mod logging;
 mod utils;
 
-use crate::api::client::{ManifoldClient, is_not_found};
-use crate::api::models::ContractMetric;
+use manifoldr::api::client::{ManifoldClient, is_not_found};
+use manifoldr::api::models::ContractMetric;
 use anyhow::{Result, bail};
 use clap::Parser;
-use cli::{BetCommands, Cli, Commands, MarketCommands, UserCommands};
+use cli::{BetCommands, Cli, Commands, MarketCommands, TopicCommands, UserCommands};
 use dotenvy::dotenv;
 use tracing::{info, instrument};
 
@@ -21,10 +17,11 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     let json = cli.json;
     let api_key = cli.api_key.or_else(|| std::env::var("API_KEY").ok());
-    let client = ManifoldClient::new(api_key);
+    let client = ManifoldClient::new(api_key)?;
 
     match cli.command {
         Commands::User { command } => handle_user_command(client, command, json).await?,
+        Commands::Topic { command } => handle_topic_command(client, command).await?,
         Commands::Market { command } => handle_market_command(client, command, json).await?,
         Commands::Bet { command } => handle_bet_command(client, command, json).await?,
     }
@@ -55,6 +52,11 @@ async fn handle_user_command(
     json: bool,
 ) -> Result<()> {
     match command {
+        UserCommands::List { limit, before } => {
+            let users = client.list_users(limit, before.as_deref()).await?;
+            if json { print_json(&users)?; }
+            else { for user in &users { println!("{}\t{}\t{}", user.id, user.username, user.name); } }
+        }
         UserCommands::Me => {
             let user = client.get_me().await?;
             if json {
@@ -152,6 +154,15 @@ async fn handle_user_command(
 }
 
 #[instrument(skip(client))]
+async fn handle_topic_command(client: ManifoldClient, command: TopicCommands) -> Result<()> {
+    match command {
+        TopicCommands::List { before_time } => print_json(&client.list_groups(before_time).await?)?,
+        TopicCommands::Get { slug } => print_json(&client.get_group_by_slug(&slug).await?)?,
+    }
+    Ok(())
+}
+
+#[instrument(skip(client))]
 async fn handle_market_command(
     client: ManifoldClient,
     command: MarketCommands,
@@ -186,12 +197,13 @@ async fn handle_market_command(
             limit,
             sort,
             filter,
+            before_time,
         } => {
             if limit <= 0 {
                 bail!("Search limit must be positive");
             }
             let markets = client
-                .search_markets(&term, Some(limit), sort.as_deref(), filter.as_deref())
+                .search_markets_with_cursor(&term, Some(limit), sort.as_deref(), filter.as_deref(), before_time)
                 .await?;
             if json {
                 print_json(&markets)?;
@@ -206,6 +218,9 @@ async fn handle_market_command(
                 client.get_market_by_id(&id_or_slug).await?
             };
             print_json(&market)?;
+        }
+        MarketCommands::Probability { id } => {
+            print_json(&client.market_probability(&id).await?)?;
         }
         MarketCommands::Probabilities { ids } => {
             print_json(&client.market_probabilities(&ids).await?)?;
@@ -270,12 +285,14 @@ async fn handle_bet_command(
             user_id,
             market_id,
             limit,
+            before,
+            after,
         } => {
             if limit <= 0 {
                 bail!("Bet limit must be positive");
             }
             let bets = client
-                .list_bets(user_id.as_deref(), market_id.as_deref(), Some(limit))
+                .list_bets_with_cursor(user_id.as_deref(), market_id.as_deref(), Some(limit), before.as_deref(), after.as_deref())
                 .await?;
             if json {
                 print_json(&bets)?;
