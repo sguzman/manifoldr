@@ -18,7 +18,9 @@ pub fn validate_topics(topics: &[String]) -> Result<()> {
     for topic in topics {
         if topic.len() > 256
             || topic.is_empty()
-            || topic.bytes().any(|ch| !(ch.is_ascii_alphanumeric() || b"/-_".contains(&ch)))
+            || topic
+                .bytes()
+                .any(|ch| !(ch.is_ascii_alphanumeric() || b"/-_".contains(&ch)))
             || topic.starts_with('/')
             || topic.ends_with('/')
         {
@@ -56,8 +58,10 @@ pub async fn run(topics: Vec<String>, count: usize) -> Result<()> {
                 let subscribe = json!({
                     "type": "subscribe", "txid": 0, "topics": topics
                 });
-                writer.send(Message::Text(subscribe.to_string().into()))
-                    .await.context("WebSocket subscribe failed")?;
+                writer
+                    .send(Message::Text(subscribe.to_string().into()))
+                    .await
+                    .context("WebSocket subscribe failed")?;
                 let mut ping = tokio::time::interval(Duration::from_secs(30));
                 ping.tick().await;
                 let mut txid = 1u64;
@@ -121,7 +125,9 @@ mod tests {
 
     #[test]
     fn topics_must_be_well_formed() {
-        assert!(validate_topics(&["global/new-bet".into(), "contract/abc-123/new-bet".into()]).is_ok());
+        assert!(
+            validate_topics(&["global/new-bet".into(), "contract/abc-123/new-bet".into()]).is_ok()
+        );
         assert!(validate_topics(&[]).is_err());
         assert!(validate_topics(&["../bad".into()]).is_err());
         assert!(validate_topics(&["".into()]).is_err());
@@ -130,9 +136,16 @@ mod tests {
 
     #[test]
     fn broadcasts_are_distinguished_from_acknowledgements() {
-        assert!(parse_broadcast(r#"{"type":"ack","txid":1,"success":true}"#).unwrap().is_none());
-        let msg = parse_broadcast(r#"{"type":"broadcast","topic":"global/new-bet","data":{"id":"bet1"}}"#)
-            .unwrap().unwrap();
+        assert!(
+            parse_broadcast(r#"{"type":"ack","txid":1,"success":true}"#)
+                .unwrap()
+                .is_none()
+        );
+        let msg = parse_broadcast(
+            r#"{"type":"broadcast","topic":"global/new-bet","data":{"id":"bet1"}}"#,
+        )
+        .unwrap()
+        .unwrap();
         assert_eq!(msg["data"]["id"], "bet1");
     }
 }

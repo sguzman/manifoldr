@@ -20,9 +20,7 @@ pub struct Cli {
 #[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Emit shell completion definitions for bash, fish, zsh, etc.
-    Completions {
-        shell: Shell,
-    },
+    Completions { shell: Shell },
     /// Subscribe to live Manifold WebSocket events as NDJSON
     Stream {
         /// One or more documented stream topics (repeat for multiple)

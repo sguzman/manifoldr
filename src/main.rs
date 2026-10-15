@@ -18,7 +18,12 @@ async fn main() -> Result<()> {
     let json = cli.json;
     let api_key = cli.api_key.or_else(|| std::env::var("API_KEY").ok());
     if let Commands::Completions { shell } = cli.command {
-        clap_complete::generate(shell, &mut Cli::command(), "manifoldr", &mut std::io::stdout());
+        clap_complete::generate(
+            shell,
+            &mut Cli::command(),
+            "manifoldr",
+            &mut std::io::stdout(),
+        );
         return Ok(());
     }
     if let Commands::Stream { topics, count } = cli.command {
@@ -28,7 +33,9 @@ async fn main() -> Result<()> {
     let client = ManifoldClient::new(api_key)?;
 
     match cli.command {
-        Commands::Stream { .. } | Commands::Completions { .. } => unreachable!("handled before client initialization"),
+        Commands::Stream { .. } | Commands::Completions { .. } => {
+            unreachable!("handled before client initialization")
+        }
         Commands::User { command } => handle_user_command(client, command, json).await?,
         Commands::Topic { command } => handle_topic_command(client, command).await?,
         Commands::Market { command } => handle_market_command(client, command, json).await?,
@@ -42,9 +49,13 @@ fn print_json<T: serde::Serialize>(value: &T) -> Result<()> {
     Ok(())
 }
 
-async fn resolve_user_id(client: &ManifoldClient, identifier: Option<String>, direct_id: bool) -> Result<String> {
+async fn resolve_user_id(
+    client: &ManifoldClient,
+    identifier: Option<String>,
+    direct_id: bool,
+) -> Result<String> {
     if direct_id {
-        return Ok(identifier.ok_or_else(|| anyhow::anyhow!("Explicit user ID required"))?);
+        return identifier.ok_or_else(|| anyhow::anyhow!("Explicit user ID required"));
     }
     if let Some(identifier) = identifier {
         match client.get_user_by_username(&identifier).await {
@@ -100,11 +111,18 @@ async fn handle_user_command(
                 utils::print_user_table(&user);
             }
         }
-        UserCommands::Portfolio { user_id, id: direct_id } => {
+        UserCommands::Portfolio {
+            user_id,
+            id: direct_id,
+        } => {
             let id = resolve_user_id(&client, user_id, direct_id).await?;
             print_json(&client.get_user_portfolio(&id).await?)?;
         }
-        UserCommands::History { user_id, period, id: direct_id } => {
+        UserCommands::History {
+            user_id,
+            period,
+            id: direct_id,
+        } => {
             let id = resolve_user_id(&client, user_id, direct_id).await?;
             let history = client.get_user_portfolio_history(&id, &period).await?;
             if json {

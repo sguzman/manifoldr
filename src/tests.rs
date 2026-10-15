@@ -71,7 +71,8 @@ mod tests {
             "creatorName": "Creator", "question": "Question?",
             "outcomeType": "BINARY", "mechanism": "cpmm-1",
             "isResolved": false, "prob": 0.73
-        })).unwrap();
+        }))
+        .unwrap();
         assert_eq!(market.probability, Some(0.73));
     }
 
