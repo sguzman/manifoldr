@@ -30,7 +30,9 @@ async fn main() -> Result<()> {
         return Ok(());
     }
     if let Commands::Stream { topics, count } = cli.command {
-        if cli.offline { bail!("--offline cannot subscribe to a live WebSocket stream"); }
+        if cli.offline {
+            bail!("--offline cannot subscribe to a live WebSocket stream");
+        }
         manifoldr::realtime::run(topics, count).await?;
         return Ok(());
     }

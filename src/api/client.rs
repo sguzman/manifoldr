@@ -1,7 +1,7 @@
-use reqwest::{Client, StatusCode, header};
 use crate::api::cache::{PublicCache, is_public_endpoint};
-use std::path::PathBuf;
+use reqwest::{Client, StatusCode, header};
 use serde::Serialize;
+use std::path::PathBuf;
 use std::time::Duration;
 use tracing::debug;
 
@@ -141,16 +141,21 @@ impl ManifoldClient {
         T: serde::de::DeserializeOwned + Serialize,
     {
         let url = format!("{}/{}", self.base_url, endpoint);
-        let cache = self.public_cache.as_ref().filter(|_| is_public_endpoint(endpoint));
+        let cache = self
+            .public_cache
+            .as_ref()
+            .filter(|_| is_public_endpoint(endpoint));
         let key = serde_json::to_string(&(&self.base_url, endpoint, query)).unwrap_or_default();
-        if let Some(cache) = cache {
-            if let Some(hit) = cache.read::<T>(&key).await {
-                debug!(endpoint, "Using public cache");
-                return Ok(hit);
-            }
+        if let Some(cache) = cache
+            && let Some(hit) = cache.read::<T>(&key).await
+        {
+            debug!(endpoint, "Using public cache");
+            return Ok(hit);
         }
         if self.public_cache.as_ref().is_some_and(PublicCache::offline) {
-            return Err(ApiError::OfflineMiss { endpoint: endpoint.into() });
+            return Err(ApiError::OfflineMiss {
+                endpoint: endpoint.into(),
+            });
         }
         debug!(url, "GET Manifold");
         for attempt in 0..MAX_GET_ATTEMPTS {
@@ -207,7 +212,9 @@ impl ManifoldClient {
         B: Serialize,
     {
         if self.public_cache.as_ref().is_some_and(PublicCache::offline) {
-            return Err(ApiError::OfflineWrite { endpoint: endpoint.into() });
+            return Err(ApiError::OfflineWrite {
+                endpoint: endpoint.into(),
+            });
         }
         let url = format!("{}/{}", self.base_url, endpoint);
         debug!(url, "POST Manifold");
