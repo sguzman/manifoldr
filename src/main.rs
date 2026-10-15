@@ -16,6 +16,9 @@ async fn main() -> Result<()> {
     let _log_guard = logging::init_logging();
     let cli = Cli::parse();
     let json = cli.json;
+    if cli.cache_ttl > 86_400 {
+        bail!("--cache-ttl must not exceed 86400 seconds");
+    }
     let api_key = cli.api_key.or_else(|| std::env::var("API_KEY").ok());
     if let Commands::Completions { shell } = cli.command {
         clap_complete::generate(
@@ -27,10 +30,32 @@ async fn main() -> Result<()> {
         return Ok(());
     }
     if let Commands::Stream { topics, count } = cli.command {
+        if cli.offline { bail!("--offline cannot subscribe to a live WebSocket stream"); }
         manifoldr::realtime::run(topics, count).await?;
         return Ok(());
     }
-    let client = ManifoldClient::new(api_key)?;
+    let mut client = ManifoldClient::new(api_key)?;
+    if !cli.no_cache {
+        let cache_root = cli.cache_dir.or_else(|| {
+            std::env::var_os("XDG_CACHE_HOME")
+                .filter(|s| !s.is_empty())
+                .map(std::path::PathBuf::from)
+                .or_else(|| {
+                    std::env::var_os("HOME")
+                        .map(|home| std::path::PathBuf::from(home).join(".cache"))
+                })
+                .map(|root| root.join("manifoldr"))
+        });
+        if let Some(dir) = cache_root {
+            client.configure_public_cache(
+                dir,
+                std::time::Duration::from_secs(cli.cache_ttl),
+                cli.offline,
+            );
+        } else if cli.offline {
+            bail!("--offline needs --cache-dir or HOME/XDG_CACHE_HOME");
+        }
+    }
 
     match cli.command {
         Commands::Stream { .. } | Commands::Completions { .. } => {

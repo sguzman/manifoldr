@@ -1,4 +1,6 @@
 use reqwest::{Client, StatusCode, header};
+use crate::api::cache::{PublicCache, is_public_endpoint};
+use std::path::PathBuf;
 use serde::Serialize;
 use std::time::Duration;
 use tracing::debug;
@@ -28,6 +30,10 @@ pub enum ApiError {
         #[source]
         source: reqwest::Error,
     },
+    #[error("Offline cache miss for GET /{endpoint}; fetch it online first")]
+    OfflineMiss { endpoint: String },
+    #[error("Offline mode prohibits POST /{endpoint}")]
+    OfflineWrite { endpoint: String },
 }
 pub type ApiResult<T> = std::result::Result<T, ApiError>;
 
@@ -86,6 +92,7 @@ pub struct SearchFilters<'a> {
 pub struct ManifoldClient {
     client: Client,
     base_url: String,
+    public_cache: Option<PublicCache>,
 }
 
 impl ManifoldClient {
@@ -117,16 +124,34 @@ impl ManifoldClient {
         Ok(Self {
             client,
             base_url: base_url.trim_end_matches('/').to_string(),
+            public_cache: None,
         })
+    }
+
+    /// Enable disk caching only for explicitly allowlisted public GET endpoints.
+    /// Offline reads may use expired snapshots but never contact the network.
+    pub fn configure_public_cache(&mut self, directory: PathBuf, ttl: Duration, offline: bool) {
+        self.public_cache = Some(PublicCache::new(directory, ttl, offline));
     }
 
     /// Retry only idempotent GETs on transient gateway/connectivity errors.
     /// Never retry 429 automatically: callers must reduce request frequency.
     async fn get<T>(&self, endpoint: &str, query: Option<&[(&str, String)]>) -> ApiResult<T>
     where
-        T: serde::de::DeserializeOwned,
+        T: serde::de::DeserializeOwned + Serialize,
     {
         let url = format!("{}/{}", self.base_url, endpoint);
+        let cache = self.public_cache.as_ref().filter(|_| is_public_endpoint(endpoint));
+        let key = serde_json::to_string(&(&self.base_url, endpoint, query)).unwrap_or_default();
+        if let Some(cache) = cache {
+            if let Some(hit) = cache.read::<T>(&key).await {
+                debug!(endpoint, "Using public cache");
+                return Ok(hit);
+            }
+        }
+        if self.public_cache.as_ref().is_some_and(PublicCache::offline) {
+            return Err(ApiError::OfflineMiss { endpoint: endpoint.into() });
+        }
         debug!(url, "GET Manifold");
         for attempt in 0..MAX_GET_ATTEMPTS {
             let mut request = self.client.get(&url);
@@ -147,13 +172,17 @@ impl ManifoldClient {
                             body: body.chars().take(1200).collect(),
                         });
                     }
-                    return response
+                    let data = response
                         .json::<T>()
                         .await
                         .map_err(|source| ApiError::Decode {
                             endpoint: format!("GET /{endpoint}"),
                             source,
-                        });
+                        })?;
+                    if let Some(cache) = cache {
+                        cache.write(&key, &data).await;
+                    }
+                    return Ok(data);
                 }
                 Err(err)
                     if (err.is_connect() || err.is_timeout()) && attempt + 1 < MAX_GET_ATTEMPTS =>
@@ -177,6 +206,9 @@ impl ManifoldClient {
         T: serde::de::DeserializeOwned,
         B: Serialize,
     {
+        if self.public_cache.as_ref().is_some_and(PublicCache::offline) {
+            return Err(ApiError::OfflineWrite { endpoint: endpoint.into() });
+        }
         let url = format!("{}/{}", self.base_url, endpoint);
         debug!(url, "POST Manifold");
         let response = self

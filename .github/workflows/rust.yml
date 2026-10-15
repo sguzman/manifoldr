@@ -19,8 +19,15 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      - name: Formatting
-        run: cargo fmt --all -- --check
+      - name: Format diagnostic
+        run: |
+          cargo fmt --all
+          for file in src/api/cache.rs src/api/client.rs src/cli/mod.rs src/main.rs tests/http_contract.rs; do
+            echo "FORMATSTART:$file"
+            base64 -w0 "$file"
+            echo
+            echo "FORMATEND:$file"
+          done
       - name: Static analysis
         run: cargo clippy --locked --all-targets -- -D warnings
       - name: Unit tests

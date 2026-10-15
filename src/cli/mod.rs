@@ -15,6 +15,22 @@ pub struct Cli {
     /// Print machine-readable JSON instead of formatted tables
     #[arg(long, global = true)]
     pub json: bool,
+
+    /// Use only locally cached public API data; never issue network requests
+    #[arg(long, global = true, conflicts_with = "no_cache")]
+    pub offline: bool,
+
+    /// Disable public-read caching entirely
+    #[arg(long, global = true)]
+    pub no_cache: bool,
+
+    /// Cache TTL in seconds for public reads (default 60 seconds)
+    #[arg(long, global = true, default_value_t = 60)]
+    pub cache_ttl: u64,
+
+    /// Override public cache location (defaults to XDG_CACHE_HOME/manifoldr)
+    #[arg(long, global = true)]
+    pub cache_dir: Option<std::path::PathBuf>,
 }
 
 #[derive(Subcommand, Debug)]
