@@ -2,7 +2,7 @@
 
 Rust terminal client for the [Manifold Markets API](https://docs.manifold.markets/api), with tables for interactive inspection and JSON for scripts.
 
-**Status (October 2026):** P0 stabilization completed and the first P1 library/discovery increment verified in [Rust CI](https://github.com/sguzman/manifoldr/actions/runs/38799177704). More endpoint coverage and real-time features remain open. See [ROADMAP.md](ROADMAP.md) for implemented and planned work and [CHANGELOG.md](CHANGELOG.md) for behavioral changes. The public Manifold API is marked alpha; response schemas may change.
+**Status (October 2026):** P0 complete, with library/discovery and typed-error/pagination P1 increments verified in [Rust CI](https://github.com/sguzman/manifoldr/actions/runs/38801962820). More endpoint coverage and real-time features remain open. See [ROADMAP.md](ROADMAP.md) for implemented and planned work and [CHANGELOG.md](CHANGELOG.md) for behavioral changes. The public Manifold API is marked alpha; response schemas may change.
 
 ## Build
 

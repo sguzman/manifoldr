@@ -33,7 +33,7 @@
 ### Validation
 
 - [GitHub Actions run 38796201375](https://github.com/sguzman/manifoldr/actions/runs/38796201375) passed Rust formatting, Clippy, unit tests, CLI help, and a live *public* market-list API smoke on 2026-10-15.
-- [P1 CI run 38799177704](https://github.com/sguzman/manifoldr/actions/runs/38799177704) passed formatting, Clippy, 15 offline Rust tests (including 8 local HTTP tests), CLI help, and live read-only market, user and topic requests. These probes are best-effort and remain separately labeled, not required for offline builds.
+- [P1 CI run 38801962820](https://github.com/sguzman/manifoldr/actions/runs/38801962820) passed strict formatting, Clippy, 20 offline Rust tests (including 13 local HTTP tests), CLI help, and live read-only market, user and topic requests. These probes are best-effort and remain separately labeled, not required for offline builds.
 - Authenticated user operations and actual trading were not exercised in CI; additional endpoint coverage and integration cases remain tracked on the roadmap.
 
 ## 0.1.0 — initial codebase

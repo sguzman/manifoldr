@@ -21,10 +21,11 @@ Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for 
 
 ## P1 — Expand endpoint coverage
 
-2026-10-15 progress: [CI run 38799177704](https://github.com/sguzman/manifoldr/actions/runs/38799177704) passed formatting, Clippy, 15 tests, CLI help and three separate read-only public API smoke checks (markets, users, topics). Authenticated actions remain untested.
+2026-10-15 progress: [CI run 38801962820](https://github.com/sguzman/manifoldr/actions/runs/38801962820) passed strict formatting, Clippy, 20 offline tests, CLI help and three separate read-only public API smoke checks (markets, users, topics). Authenticated actions remain intentionally untested.
 
 - [x] Split reusable API client into a library crate; CLI consumes it (further handler decomposition optional)
-- [ ] Typed API errors added; `user get --id` provides explicit user ID lookup. Extend explicit ID switches to portfolio/history/positions later.
+- [x] Public `ApiResult`/typed `ApiError` for API callers; explicit `user get --id` supported
+- [ ] Provide explicit immutable-ID mode for portfolio/history/positions (currently username-first fallback)
 - [ ] Complete pagination/filter coverage (market, bet and user cursors; position offset/order/per-answer; market creator/topic filters implemented). Portfolio history has no documented pagination cursor.
 - [x] Single and bulk market probability retrieval with structured JSON output
 - [x] Group/topic and user discovery endpoints (listing with cursors and topic by slug)
