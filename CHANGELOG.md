@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 — MCP server milestone (2026-10-15, pending release verification)
+## 0.4.0 — MCP server released (2026-10-15)
 
 - Added a native Rust MCP Streamable HTTP server using the official rmcp SDK.
 - Added eight read-only agent tools for popular, trending and high-volume markets, custom search, suggested market ranking, topics, market details and bulk probabilities.

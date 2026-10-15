@@ -36,3 +36,7 @@ Public GET caching and strict offline mode are included. The packaging workflow 
 ### Published v0.3.0
 
 [v0.3.0](https://github.com/sguzman/manifoldr/releases/tag/v0.3.0) was published October 15, 2026 with the Linux x86-64 tarball and SHA256SUMS. Its [release workflow](https://github.com/sguzman/manifoldr/actions/runs/38811670010) completed the Rust formatting, Clippy, offline tests, optimized build, and artifact publication checks successfully. The [strict Rust CI](https://github.com/sguzman/manifoldr/actions/runs/38811669977) also passed.
+
+### Published v0.4.0
+
+[v0.4.0](https://github.com/sguzman/manifoldr/releases/tag/v0.4.0) was published on October 15, 2026 with a checksum-verified Linux x86-64 archive and one shared read-only native MCP Streamable HTTP server. [Strict Rust CI](https://github.com/sguzman/manifoldr/actions/runs/38815965068) passed; [Linux release workflow](https://github.com/sguzman/manifoldr/actions/runs/38815965095) built the binary and published both release artifacts. Deploy the included systemd user service separately; publication does not mean the server is running locally.

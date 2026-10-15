@@ -1,6 +1,6 @@
 # Manifoldr revival roadmap
 
-**Milestones released:** [v0.2.0](https://github.com/sguzman/manifoldr/releases/tag/v0.2.0) (revival) and [v0.3.0](https://github.com/sguzman/manifoldr/releases/tag/v0.3.0) (persistent public-read cache and offline mode), October 15, 2026. Both releases have verified Linux binaries and SHA256SUMS. Remaining unchecked work is optional follow-up scope.
+**Milestones released:** [v0.2.0](https://github.com/sguzman/manifoldr/releases/tag/v0.2.0) (revival), [v0.3.0](https://github.com/sguzman/manifoldr/releases/tag/v0.3.0) (public caching/offline) and [v0.4.0](https://github.com/sguzman/manifoldr/releases/tag/v0.4.0) (native centralized MCP server), October 15, 2026. All have verified Linux binaries and SHA256SUMS. Remaining unchecked work is optional follow-up scope.
 
 Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for the public Manifold Markets API. Changes go directly to the default branch in coherent commits; trading remains opt-in.
 
@@ -38,7 +38,7 @@ Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for 
 
 ## P2 — Usability and real-time functionality
 
-- [x] Read-only shared MCP HTTP server with eight public discovery tools, category filters and transparent suggested ranking (local protocol integration test passed)
+- [x] Read-only shared MCP HTTP server with eight public discovery tools, category filters and transparent suggested ranking (released v0.4.0, CI and protocol tests passed)
 - [x] Linux systemd user unit template and LAN setup instructions (repo only; requires local installation)
 
 - [x] WebSocket streaming and connection re-establishment (local reconnect test and strict CI verified)

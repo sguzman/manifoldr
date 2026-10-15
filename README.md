@@ -2,7 +2,7 @@
 
 Rust terminal client for the [Manifold Markets API](https://docs.manifold.markets/api), with tables for interactive inspection and JSON for scripts.
 
-**Status (October 15, 2026):** [v0.3.0](https://github.com/sguzman/manifoldr/releases/tag/v0.3.0) is the latest verified published binary; **v0.4.0 is being prepared** with one stateless, shared, read-only Streamable HTTP MCP endpoint for local and LAN agents. See [MCP.md](MCP.md).
+**Status (October 15, 2026):** [Manifoldr v0.4.0](https://github.com/sguzman/manifoldr/releases/tag/v0.4.0) is released, with one shared native read-only MCP HTTP server for local and LAN agents. [Strict Rust CI](https://github.com/sguzman/manifoldr/actions/runs/38815965068) passed and the [release workflow](https://github.com/sguzman/manifoldr/actions/runs/38815965095) built and published the Linux x86-64 binary. See [MCP.md](MCP.md) for deployment.
 
 ## Linux binary
 
@@ -37,7 +37,7 @@ For LAN agents, replace the loopback address with this host's actual LAN IP.
 The repo includes a systemd --user unit at
 [packaging/systemd/manifoldr-mcp.service](packaging/systemd/manifoldr-mcp.service).
 Deployment, tool descriptions and security details: [MCP.md](MCP.md).
-Version 0.4.0 must pass CI before its binary is published.
+The [v0.4.0 Linux release](https://github.com/sguzman/manifoldr/releases/tag/v0.4.0) includes the server and SHA256SUMS.
 
 ## Rust library
 
