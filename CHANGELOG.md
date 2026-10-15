@@ -4,6 +4,11 @@
 
 ### Added (P1 underway)
 
+- Public `ApiResult<T>` with typed API error variants and HTTP status inspection, distinguishing throttling from decoding or network failures.
+- Portfolio contract pagination (`--offset`, `--order`, `--per-answer`) and creator/topic filters for market listing.
+- Direct immutable-ID user lookups with `user get --id`, preserving existing username-first fallback.
+- Offline mock-server coverage for paginated position queries, market filters, input validation, and 429 responses.
+
 - Reusable `manifoldr` Rust library; the existing binary now imports its public client and models.
 - Fallible client constructor and configurable base URL for offline mock-server tests.
 - Public user/topic discovery, individual market probability lookup, and pagination cursors for market search and bet list.
@@ -14,6 +19,7 @@
 ### Changed
 
 - **Breaking trading safety change:** `bet place` now submits Manifold's `dryRun: true` by default. Real trades require `--execute`.
+- Page-specific position totals are now labeled `PAGE TOTAL` to avoid misleading account-wide summaries.
 - Position tables display API-provided invested/profit/profit-percent metrics instead of treating share counts as a market payout valuation.
 - Username lookup falls back to ID lookup only when the username endpoint returns HTTP 404.
 - Added bounded 10-second connection / 30-second request timeouts, limited transient GET retries, and clearer HTTP errors; never retry POST.

@@ -24,14 +24,14 @@ Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for 
 2026-10-15 progress: [CI run 38799177704](https://github.com/sguzman/manifoldr/actions/runs/38799177704) passed formatting, Clippy, 15 tests, CLI help and three separate read-only public API smoke checks (markets, users, topics). Authenticated actions remain untested.
 
 - [x] Split reusable API client into a library crate; CLI consumes it (further handler decomposition optional)
-- [ ] Typed errors and explicit username/ID handling throughout
-- [ ] Complete pagination and robust filtering for markets, bets, positions and history (market/bet/user cursor support landed; positions/history and filters outstanding)
+- [ ] Typed API errors added; `user get --id` provides explicit user ID lookup. Extend explicit ID switches to portfolio/history/positions later.
+- [ ] Complete pagination/filter coverage (market, bet and user cursors; position offset/order/per-answer; market creator/topic filters implemented). Portfolio history has no documented pagination cursor.
 - [x] Single and bulk market probability retrieval with structured JSON output
 - [x] Group/topic and user discovery endpoints (listing with cursors and topic by slug)
 - [ ] Order inspection/cancellation and share-selling flows (all safe by default)
 - [ ] Live REST compatibility fixtures; capture only non-sensitive public responses
 - [x] Integration tests using a local HTTP mock server (never authenticated live trading)
-- [ ] API limits, backoff, observability, and resilience for intermittent networks
+- [ ] API limits, backoff, observability, and resilience for intermittent networks (429 is typed and not retried; further resilience work open)
 
 ## P2 — Usability and real-time functionality
 
