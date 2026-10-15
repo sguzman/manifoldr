@@ -27,9 +27,12 @@ jobs:
         run: cargo test --locked --all-targets
       - name: CLI help
         run: cargo run --locked -- --help
-      - name: Public API read-only smoke (best effort)
+      - name: Public smoke — market list (best effort)
         continue-on-error: true
-        run: |
-          cargo run --locked -- --json market list --limit 1 > /dev/null
-          cargo run --locked -- --json user list --limit 1 > /dev/null
-          cargo run --locked -- topic list > /dev/null
+        run: cargo run --locked -- --json market list --limit 1 > /dev/null
+      - name: Public smoke — user list (best effort)
+        continue-on-error: true
+        run: cargo run --locked -- --json user list --limit 1 > /dev/null
+      - name: Public smoke — topic list (best effort)
+        continue-on-error: true
+        run: cargo run --locked -- topic list > /dev/null

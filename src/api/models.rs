@@ -95,7 +95,8 @@ pub struct Group {
     pub slug: String,
     pub creator_id: String,
     pub created_time: i64,
-    pub about: Option<String>,
+    /// Rich-text JSON document (not necessarily a string).
+    pub about: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

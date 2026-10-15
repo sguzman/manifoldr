@@ -8,6 +8,8 @@
 - Fallible client constructor and configurable base URL for offline mock-server tests.
 - Public user/topic discovery, individual market probability lookup, and pagination cursors for market search and bet list.
 - Local HTTP contract tests for query encoding, transient GET retries, 404 errors, dry-run payloads, and never-retried POSTs.
+- Topic `about` now supports Manifold's structured rich-text JSON instead of expecting a string; discovered by live smoke test.
+- Public live smoke commands run as separate best-effort checks, so one failure cannot hide later probes.
 
 ### Changed
 

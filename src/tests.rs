@@ -54,6 +54,17 @@ mod tests {
     }
 
     #[test]
+    fn group_about_accepts_structured_rich_text() {
+        let value = json!({
+            "id":"group1", "name":"A topic", "slug":"a-topic",
+            "creatorId":"user1", "createdTime":123,
+            "about":{"type":"doc","content":[{"type":"paragraph"}]}
+        });
+        let group: Group = serde_json::from_value(value).unwrap();
+        assert!(group.about.unwrap().is_object());
+    }
+
+    #[test]
     fn validation_rejects_invalid_trade_inputs() {
         for amount in [0.0, -10.0, f64::NAN, f64::INFINITY] {
             assert!(validate_bet(amount, "YES").is_err());
