@@ -55,6 +55,9 @@ pub enum UserCommands {
     Get {
         /// Username or ID of the user
         username_or_id: String,
+        /// Treat the argument directly as an immutable user ID
+        #[arg(long)]
+        id: bool,
     },
     /// Get user portfolio metrics
     Portfolio {
@@ -74,6 +77,15 @@ pub enum UserCommands {
         user_id: Option<String>,
         #[arg(short, long, default_value_t = 10)]
         limit: i32,
+        /// Number of contracts to skip in server-side pagination
+        #[arg(long, default_value_t = 0)]
+        offset: u32,
+        /// Order of server-side pages
+        #[arg(long, default_value = "lastBetTime", value_parser = ["lastBetTime", "profit"])]
+        order: String,
+        /// Include per-answer positions in multiple-choice markets
+        #[arg(long)]
+        per_answer: bool,
         /// Watch and refresh positions every N seconds
         #[arg(short, long, default_missing_value = "10", num_args = 0..=1)]
         watch: Option<u64>,
@@ -112,6 +124,12 @@ pub enum MarketCommands {
         order: Option<String>,
         #[arg(short, long)]
         before: Option<String>,
+        /// Filter by creator's immutable user ID
+        #[arg(long)]
+        user_id: Option<String>,
+        /// Filter by topic ID
+        #[arg(long)]
+        group_id: Option<String>,
     },
     /// Search for markets
     Search {

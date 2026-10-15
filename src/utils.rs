@@ -307,7 +307,7 @@ pub fn print_positions_table(
     };
     add_total("DISPLAYED TOTAL", &visible);
     // Include closed positions in the full total only when --all is supplied.
-    add_total("TOTAL", &filtered);
+    add_total("PAGE TOTAL", &filtered);
 
     println!("{table}");
 }

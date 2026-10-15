@@ -70,11 +70,15 @@ async fn handle_user_command(
                 utils::print_user_table(&user);
             }
         }
-        UserCommands::Get { username_or_id } => {
-            let user = match client.get_user_by_username(&username_or_id).await {
-                Ok(user) => user,
-                Err(err) if is_not_found(&err) => client.get_user_by_id(&username_or_id).await?,
-                Err(err) => return Err(err.into()),
+        UserCommands::Get { username_or_id, id } => {
+            let user = if id {
+                client.get_user_by_id(&username_or_id).await?
+            } else {
+                match client.get_user_by_username(&username_or_id).await {
+                    Ok(user) => user,
+                    Err(err) if is_not_found(&err) => client.get_user_by_id(&username_or_id).await?,
+                    Err(err) => return Err(err.into()),
+                }
             };
             if json {
                 print_json(&user)?;
@@ -98,6 +102,9 @@ async fn handle_user_command(
         UserCommands::Positions {
             user_id,
             limit,
+            offset,
+            order,
+            per_answer,
             watch,
             max_width,
             display_limit,
@@ -122,18 +129,27 @@ async fn handle_user_command(
                 let fetch_limit =
                     limit.max(display_limit.unwrap_or(0).min(i32::MAX as usize) as i32);
                 info!(id, fetch_limit, "Fetching positions");
-                let response = client.get_user_contract_metrics(&id, fetch_limit).await?;
+                let response = client.get_user_contract_metrics_page(&id, fetch_limit, offset, Some(&order), per_answer).await?;
                 if json {
                     print_json(&response)?;
                 } else {
                     let mut groups: Vec<Vec<ContractMetric>> =
                         response.metrics_by_contract.values().cloned().collect();
-                    groups.sort_by(|a, b| {
-                        let profit = |group: &Vec<ContractMetric>| -> f64 {
-                            group.iter().map(|m| m.profit.unwrap_or_default()).sum()
-                        };
-                        profit(b).total_cmp(&profit(a))
-                    });
+                    if order == "profit" {
+                        groups.sort_by(|a, b| {
+                            let profit = |group: &Vec<ContractMetric>| -> f64 {
+                                group.iter().map(|m| m.profit.unwrap_or_default()).sum()
+                            };
+                            profit(b).total_cmp(&profit(a))
+                        });
+                    } else {
+                        groups.sort_by(|a, b| {
+                            let last = |group: &Vec<ContractMetric>| -> i64 {
+                                group.iter().filter_map(|m| m.last_bet_time).max().unwrap_or(0)
+                            };
+                            last(b).cmp(&last(a))
+                        });
+                    }
                     let titles = response
                         .contracts
                         .into_iter()
@@ -179,16 +195,20 @@ async fn handle_market_command(
             sort,
             order,
             before,
+            user_id,
+            group_id,
         } => {
             if !(1..=1000).contains(&limit) {
                 bail!("Market limit must be between 1 and 1000");
             }
             let markets = client
-                .list_markets(
+                .list_markets_filtered(
                     Some(limit),
                     sort.as_deref(),
                     order.as_deref(),
                     before.as_deref(),
+                    user_id.as_deref(),
+                    group_id.as_deref(),
                 )
                 .await?;
             if json {

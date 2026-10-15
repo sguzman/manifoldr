@@ -195,6 +195,9 @@ impl ManifoldClient {
         user_id: &str,
         period: &str,
     ) -> ApiResult<Vec<PortfolioMetrics>> {
+        if !matches!(period, "daily" | "weekly" | "monthly" | "allTime") {
+            return Err(ApiError::InvalidInput("period must be daily, weekly, monthly, or allTime".into()));
+        }
         self.get(
             "get-user-portfolio-history",
             Some(&[
@@ -210,11 +213,33 @@ impl ManifoldClient {
         user_id: &str,
         limit: i32,
     ) -> ApiResult<UserContractMetricsResponse> {
-        self.get(
-            "get-user-contract-metrics-with-contracts",
-            Some(&[("userId", user_id.to_owned()), ("limit", limit.to_string())]),
-        )
-        .await
+        self.get_user_contract_metrics_page(user_id, limit, 0, None, false).await
+    }
+
+    /// The response covers only the requested page, not the full account.
+    /// Server ordering is "lastBetTime" (default) or "profit".
+    pub async fn get_user_contract_metrics_page(
+        &self,
+        user_id: &str,
+        limit: i32,
+        offset: u32,
+        order: Option<&str>,
+        per_answer: bool,
+    ) -> ApiResult<UserContractMetricsResponse> {
+        bounded_limit(limit, "Position limit")?;
+        if order.is_some_and(|o| !matches!(o, "lastBetTime" | "profit")) {
+            return Err(ApiError::InvalidInput("order must be lastBetTime or profit".into()));
+        }
+        let mut query = vec![
+            ("userId", user_id.to_owned()),
+            ("limit", limit.to_string()),
+            ("offset", offset.to_string()),
+            ("perAnswer", per_answer.to_string()),
+        ];
+        if let Some(o) = order {
+            query.push(("order", o.to_owned()));
+        }
+        self.get("get-user-contract-metrics-with-contracts", Some(&query)).await
     }
 
     pub async fn get_market_positions(
@@ -241,6 +266,20 @@ impl ManifoldClient {
         order: Option<&str>,
         before: Option<&str>,
     ) -> ApiResult<Vec<LiteMarket>> {
+        self.list_markets_filtered(limit, sort, order, before, None, None).await
+    }
+
+    /// Market list filtering supports creator and topic IDs.
+    pub async fn list_markets_filtered(
+        &self,
+        limit: Option<i32>,
+        sort: Option<&str>,
+        order: Option<&str>,
+        before: Option<&str>,
+        user_id: Option<&str>,
+        group_id: Option<&str>,
+    ) -> ApiResult<Vec<LiteMarket>> {
+        if let Some(n) = limit { bounded_limit(n, "Market limit")?; }
         let mut query = Vec::new();
         if let Some(n) = limit {
             query.push(("limit", n.to_string()));
@@ -254,6 +293,8 @@ impl ManifoldClient {
         if let Some(s) = before {
             query.push(("before", s.to_owned()));
         }
+        if let Some(id) = user_id { query.push(("userId", id.to_owned())); }
+        if let Some(id) = group_id { query.push(("groupId", id.to_owned())); }
         self.get("markets", Some(&query)).await
     }
 
