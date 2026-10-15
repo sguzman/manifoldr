@@ -1,0 +1,14 @@
+[Unit]
+Description=Manifoldr read-only MCP for local and LAN agents
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.cargo/bin/manifoldr mcp serve --bind 0.0.0.0:8877
+Restart=on-failure
+RestartSec=5
+Environment=RUST_LOG=warn
+
+[Install]
+WantedBy=default.target
