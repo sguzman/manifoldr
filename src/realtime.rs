@@ -43,12 +43,18 @@ pub fn parse_broadcast(message: &str) -> Result<Option<Value>> {
 /// Subscribe to public events and write one JSON object per line to stdout.
 /// Reconnects and resubscribes after interruptions. Ctrl+C stops cleanly.
 pub async fn run(topics: Vec<String>, count: usize) -> Result<()> {
+    run_at(MANIFOLD_WS, topics, count).await
+}
+
+/// Override the WebSocket endpoint for local integration tests. No credentials
+/// or authenticated protocol messages are ever transmitted.
+pub async fn run_at(endpoint: &str, topics: Vec<String>, count: usize) -> Result<()> {
     validate_topics(&topics)?;
     let mut received = 0usize;
     let mut backoff = 1u64;
     loop {
         let session = tokio::select! {
-            result = connect_async(MANIFOLD_WS) => result,
+            result = connect_async(endpoint) => result,
             _ = tokio::signal::ctrl_c() => return Ok(()),
         };
         match session {
@@ -147,5 +153,46 @@ mod tests {
         .unwrap()
         .unwrap();
         assert_eq!(msg["data"]["id"], "bet1");
+    }
+}
+
+
+#[cfg(test)]
+mod integration_tests {
+    use super::run_at;
+    use futures::{SinkExt, StreamExt};
+    use tokio::net::TcpListener;
+    use tokio_tungstenite::{accept_async, tungstenite::Message};
+
+    #[tokio::test]
+    async fn websocket_reconnects_and_resubscribes_after_disconnect() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = format!("ws://{}", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move {
+            for attempt in 0..2 {
+                let (stream, _) = listener.accept().await.unwrap();
+                let mut socket = accept_async(stream).await.unwrap();
+                let first = socket.next().await.unwrap().unwrap();
+                let Message::Text(body) = first else { panic!("expected subscribe") };
+                let command: serde_json::Value = serde_json::from_str(&body).unwrap();
+                assert_eq!(command["type"], "subscribe");
+                assert_eq!(command["topics"][0], "global/new-bet");
+                if attempt == 0 {
+                    socket.close(None).await.unwrap();
+                } else {
+                    socket.send(Message::Text(
+                        r#"{"type":"broadcast","topic":"global/new-bet","data":{"id":"test"}}"#.into()
+                    )).await.unwrap();
+                    let _ = socket.next().await;
+                }
+            }
+        });
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(6),
+            run_at(&endpoint, vec!["global/new-bet".into()], 1)
+        ).await;
+        assert!(result.is_ok(), "reconnection timed out");
+        result.unwrap().unwrap();
+        server.await.unwrap();
     }
 }
