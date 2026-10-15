@@ -17,6 +17,29 @@ Install from the source directory using cargo if preferred:
 
     cargo install --locked --path .
 
+## Rust library
+
+Manifoldr now exposes a reusable Rust library alongside the CLI binary. Add the repository as a dependency from your own Rust project:
+
+    manifoldr = { git = "https://github.com/sguzman/manifoldr" }
+
+A minimal async example:
+
+    use manifoldr::api::client::ManifoldClient;
+
+    #[tokio::main]
+    async fn main() -> anyhow::Result<()> {
+        let client = ManifoldClient::new(None)?;
+        let markets = client.list_markets(Some(5), None, None, None).await?;
+        for market in markets {
+            println!("{}", market.question);
+        }
+        Ok(())
+    }
+
+The constructor returns errors rather than panicking on invalid HTTP client or key configuration.
+`ManifoldClient::with_base_url` exists for mock servers and integration testing; **never** pass genuine API credentials to an untrusted host. Public reads do not require credentials.
+
 ## Authentication
 
 Public market data requires no API key. To use authenticated commands, create a Manifold API key in your Manifold profile settings. Configure it locally with `MANIFOLD_API_KEY` (preferred) or `API_KEY`.
@@ -31,6 +54,9 @@ Examples use the installed `manifoldr` binary. During development, prefix comman
 
 | Command | Purpose |
 | --- | --- |
+| `manifoldr user list --limit 20 [--before USER_ID]` | Browse public users with ID cursor |
+| `manifoldr topic list [--before-time UNIX_MILLISECONDS]` | Browse public topics (JSON) |
+| `manifoldr topic get TOPIC_SLUG` | Retrieve public topic (JSON) |
 | `manifoldr user me` | Authenticated user profile |
 | `manifoldr user get USERNAME_OR_ID` | Public profile |
 | `manifoldr user portfolio [USERNAME_OR_ID]` | Live portfolio JSON |
@@ -39,11 +65,14 @@ Examples use the installed `manifoldr` binary. During development, prefix comman
 | `manifoldr user positions --watch 10` | Refresh positions every 10 seconds |
 | `manifoldr market list --limit 20` | Recently created markets |
 | `manifoldr market search "AI safety" --limit 20` | Search markets |
+| `manifoldr market search "AI" --sort newest --before-time 1706000000000` | Deep search pagination by creation timestamp |
+| `manifoldr market probability MARKET_ID` | One market's current probability |
 | `manifoldr market get MARKET_ID` | Full market JSON |
 | `manifoldr market get MARKET_SLUG --slug` | Get market by URL slug |
 | `manifoldr market probabilities MARKET_ID [MARKET_ID ...]` | Bulk probability JSON (1–100 IDs) |
 | `manifoldr market positions MARKET_ID --top 20` | Market positions |
 | `manifoldr bet list --user-id USER_ID` | Recent bets |
+| `manifoldr bet list --user-id USER_ID --before BET_ID` | Fetch older bets; `--after` fetches newer bets |
 | `manifoldr bet place MARKET_ID 5 YES` | **Simulate** a binary bet |
 
 ### Real trading is opt-in
@@ -70,6 +99,10 @@ Commands that already return rich JSON (such as `market get` and `user portfolio
 
 Position **shares are share counts, not a current market payout valuation**. The CLI displays the API's `invested`, `profit`, and `profitPercent` values rather than estimating P/L from counts. Aggregated totals sum reported position metrics; percentages in the footer are computed from those aggregate amounts. Total rows are for positions retrieved in the current API response, not necessarily the complete account portfolio. Use `--all` to include closed/zero-share positions; `--display-limit` limits printed groups only. Do not treat these tables as financial statements.
 
+### Cursor rules
+
+For `market list`, pass `--before` with the final market ID of the prior page. `user list` and `bet list` similarly use entity ID cursors. For `market search`, the API instead requires `--sort newest --before-time` with the last returned market's `createdTime` in milliseconds; it cannot be used with other sort modes. For `topic list`, `--before-time` is a Unix millisecond timestamp. Cursor results are individual pages, not implicit fetch-all requests.
+
 ## Development
 
 Run:
@@ -82,6 +115,8 @@ GitHub Actions runs the same offline checks on pushes to `main` and pull request
 
 Source layout:
 
+- `src/lib.rs`: public Rust library root
+- `tests/http_contract.rs`: local mock-server transport tests (never connect to Manifold)
 - `src/cli/mod.rs`: clap command and argument definitions
 - `src/api/client.rs`: HTTP client, retry/timeout policy, endpoint calls
 - `src/api/models.rs`: serde wire models

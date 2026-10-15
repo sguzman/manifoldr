@@ -2,6 +2,13 @@
 
 ## Unreleased — revival work (2026-10-15)
 
+### Added (P1 underway)
+
+- Reusable `manifoldr` Rust library; the existing binary now imports its public client and models.
+- Fallible client constructor and configurable base URL for offline mock-server tests.
+- Public user/topic discovery, individual market probability lookup, and pagination cursors for market search and bet list.
+- Local HTTP contract tests for query encoding, transient GET retries, 404 errors, dry-run payloads, and never-retried POSTs.
+
 ### Changed
 
 - **Breaking trading safety change:** `bet place` now submits Manifold's `dryRun: true` by default. Real trades require `--execute`.

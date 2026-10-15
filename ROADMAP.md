@@ -21,6 +21,8 @@ Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for 
 
 ## P1 — Expand endpoint coverage
 
+Work in progress (2026-10-15): library extraction; user/topic discovery; single probability lookup; cursor-aware market search and bet queries; local HTTP contract tests. Keep checklist items open until CI verifies the new implementation and related subfeatures are complete.
+
 - [ ] Split reusable API client into a library crate; CLI becomes a thin adapter
 - [ ] Typed errors and explicit username/ID handling throughout
 - [ ] Pagination and robust filtering for markets, bets, positions and history
