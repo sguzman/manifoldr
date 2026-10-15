@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (after v0.2.0)
+## 0.3.0 — release candidate (2026-10-15)
 
 - Opt-in library cache configuration and a default 60-second public-read cache for CLI use, respecting XDG paths.
 - Strict `--offline` mode with no network I/O, explicit cache misses, and support for expired snapshots.

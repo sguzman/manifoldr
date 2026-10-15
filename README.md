@@ -2,11 +2,11 @@
 
 Rust terminal client for the [Manifold Markets API](https://docs.manifold.markets/api), with tables for interactive inspection and JSON for scripts.
 
-**Status (October 15, 2026):** [Manifoldr v0.2.0](https://github.com/sguzman/manifoldr/releases/tag/v0.2.0) is released with a Linux x86-64 binary, reusable Rust library, WebSocket streaming and opt-in account writes. Both [strict CI](https://github.com/sguzman/manifoldr/actions/runs/38807151269) and the [release build](https://github.com/sguzman/manifoldr/actions/runs/38807151171) passed. Optional offline REST caching and full valuation reconciliation remain future enhancements.
+**Status (October 15, 2026):** v0.3.0 adds local caching and strict offline mode to the previously released v0.2.0 Rust client. Its Linux x86-64 binary is published after the full GitHub Actions quality gate. Persistent portfolio accounting and background synchronization remain future work.
 
-## Verified Linux binary
+## Linux binary
 
-Download [v0.2.0 for GNU/Linux x86-64](https://github.com/sguzman/manifoldr/releases/download/v0.2.0/manifoldr-linux-x86_64.tar.gz), together with its [SHA256SUMS](https://github.com/sguzman/manifoldr/releases/download/v0.2.0/SHA256SUMS). Verify the checksum before extracting and running the binary.
+The [v0.3.0 Linux x86-64 release](https://github.com/sguzman/manifoldr/releases/tag/v0.3.0) includes the cache and offline-mode commands. The [v0.2.0 release](https://github.com/sguzman/manifoldr/releases/tag/v0.2.0) remains available for earlier versions. Verify the release's SHA256SUMS before extracting the binary.
 
 ## Build
 
@@ -153,9 +153,9 @@ Version 0.2.0 is the published Rust CLI/library stabilization release. The [Linu
 
 This release does **not** yet include a persistent local REST cache or historical synchronization engine; a stream can already be recorded to NDJSON via shell redirection.
 
-## Public API caching and offline mode (development branch)
+## Public API caching and offline mode (v0.3.0)
 
-The current `main` branch now implements a **public-only on-disk GET cache**. The published v0.2.0 binary predates this feature; it will be available in the next release. The CLI caches allowlisted public reads by default under `$XDG_CACHE_HOME/manifoldr` (or `~/.cache/manifoldr`) for 60 seconds. Repeated requests with matching endpoints and query parameters can be answered without redownloading.
+Version 0.3.0 implements a **public-only on-disk GET cache**. The older v0.2.0 binary does not include this feature. The CLI caches allowlisted public reads by default under `$XDG_CACHE_HOME/manifoldr` (or `~/.cache/manifoldr`) for 60 seconds. Repeated requests with matching endpoints and query parameters can be answered without redownloading.
 
     manifoldr market list --limit 20
     manifoldr --offline market list --limit 20

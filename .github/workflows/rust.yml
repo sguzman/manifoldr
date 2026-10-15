@@ -30,6 +30,8 @@ jobs:
           cargo run --locked -- completions fish > /dev/null
           cargo run --locked -- stream --help
           cargo run --locked -- --help
+          cargo run --locked -- --version
+          cargo run --locked -- market list --help
           cargo run --locked -- bet list --help
           cargo run --locked -- bet cancel --help
           cargo run --locked -- market sell --help

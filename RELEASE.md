@@ -28,3 +28,7 @@ The 0.2.0 release includes the API library, terminal CLI, safe opt-in account
 writes, public streaming and shell completions. Durable offline REST caching,
 full financial reconciliation, and platform-specific packaging remain optional
 future enhancements. Do not imply those exist until implemented and tested.
+
+## v0.3.0
+
+Public GET caching and strict offline mode are included. The packaging workflow derives the tag from Cargo.toml and publishes it only after formatting, Clippy, tests and release-mode build pass. Older releases are never replaced.
