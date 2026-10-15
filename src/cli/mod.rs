@@ -10,6 +10,10 @@ pub struct Cli {
     /// Set the API key (can also be set via MANIFOLD_API_KEY env var)
     #[arg(short, long, env = "MANIFOLD_API_KEY")]
     pub api_key: Option<String>,
+
+    /// Print machine-readable JSON instead of formatted tables
+    #[arg(long, global = true)]
+    pub json: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -104,6 +108,11 @@ pub enum MarketCommands {
         #[arg(short, long)]
         slug: bool,
     },
+    /// Get probability data for up to 100 market IDs in one API request
+    Probabilities {
+        #[arg(required = true, num_args = 1..=100)]
+        ids: Vec<String>,
+    },
     /// Get market positions
     Positions { 
         market_id: String,
@@ -125,8 +134,11 @@ pub enum BetCommands {
         market_id: String,
         /// Amount to bet
         amount: f64,
-        /// Outcome (e.g., YES, NO)
+        /// Outcome (YES or NO for binary markets)
         outcome: String,
+        /// Execute a real trade; without this, Manifold simulates the trade
+        #[arg(long)]
+        execute: bool,
     },
     /// List bets
     List {

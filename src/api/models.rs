@@ -40,6 +40,7 @@ pub struct LiteMarket {
     pub probability: Option<f64>,
     pub pool: Option<serde_json::Value>,
     pub volume: Option<f64>,
+    #[serde(default)]
     pub volume_24_hours: f64,
     pub is_resolved: bool,
     pub resolution: Option<String>,
@@ -55,6 +56,7 @@ pub struct FullMarket {
     pub lite: LiteMarket,
     pub answers: Option<Vec<Answer>>,
     pub description: Option<serde_json::Value>,
+    #[serde(default)]
     pub text_description: String,
     pub group_slugs: Option<Vec<String>>,
 }
@@ -125,7 +127,9 @@ pub struct ContractMetric {
     pub payout: Option<f64>,
     pub profit: Option<f64>,
     pub profit_percent: Option<f64>,
+    #[serde(default)]
     pub total_shares: std::collections::HashMap<String, Option<f64>>,
+    #[serde(default)]
     pub total_spent: std::collections::HashMap<String, Option<f64>>,
     pub user_id: String,
     pub user_username: Option<String>,
@@ -138,5 +142,13 @@ pub struct ContractMetric {
 #[serde(rename_all = "camelCase")]
 pub struct UserContractMetricsResponse {
     pub metrics_by_contract: std::collections::HashMap<String, Vec<ContractMetric>>,
-    pub contracts: Vec<LiteMarket>,
+    pub contracts: Vec<MarketSummary>,
+}
+
+/// User portfolio responses embed contract summaries, not guaranteed full LiteMarket objects.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarketSummary {
+    pub id: String,
+    pub question: String,
 }

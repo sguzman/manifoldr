@@ -101,26 +101,57 @@ pub fn print_portfolio_history_table(history: &[PortfolioMetrics]) {
     println!("{}", table);
 }
 
-fn format_shares(shares: &std::collections::HashMap<String, Option<f64>>) -> String {
-    let mut parts = Vec::new();
-    let mut sorted_keys: Vec<_> = shares.keys().collect();
-    sorted_keys.sort();
-    
-    for outcome in sorted_keys {
-        if let Some(Some(amt)) = shares.get(outcome) {
-            if amt.abs() > 0.1 {
-                parts.push(format!("{}: {:.0}", outcome, amt));
-            }
-        }
+fn abbreviate(value: &str, max_width: Option<u16>) -> String {
+    let Some(width) = max_width.map(usize::from) else {
+        return value.to_owned();
+    };
+    if value.chars().count() <= width {
+        return value.to_owned();
     }
-    
-    if parts.is_empty() {
-        "-".to_string()
+    if width <= 3 {
+        return value.chars().take(width).collect();
+    }
+    format!("{}...", value.chars().take(width - 3).collect::<String>())
+}
+
+fn describe_shares(shares: &std::collections::HashMap<String, Option<f64>>) -> String {
+    let mut positions: Vec<_> = shares
+        .iter()
+        .filter_map(|(outcome, value)| match value {
+            Some(n) if n.is_finite() && n.abs() > 0.000001 => {
+                Some(format!("{outcome}: {n:.2}"))
+            }
+            _ => None,
+        })
+        .collect();
+    positions.sort();
+    if positions.is_empty() {
+        "-".to_owned()
     } else {
-        parts.join(", ")
+        positions.join(", ")
     }
 }
 
+fn money(value: Option<f64>) -> String {
+    value.map_or_else(|| "N/A".to_owned(), |number| format!("{number:.2}"))
+}
+
+fn profit_cell(value: Option<f64>, percent: bool) -> Cell {
+    let content = if percent {
+        value.map_or_else(|| "N/A".to_owned(), |n| format!("{n:.2}%"))
+    } else {
+        money(value)
+    };
+    let color = match value {
+        Some(n) if n > 0.0 => Color::Green,
+        Some(n) if n < 0.0 => Color::Red,
+        _ => Color::Reset,
+    };
+    Cell::new(content).fg(color)
+}
+
+/// Values and P/L always come from Manifold's ContractMetric fields.
+/// Raw share counts are quantities, NOT currently redeemable payouts.
 pub fn print_positions_table(
     position_groups: &[Vec<ContractMetric>],
     titles: Option<&std::collections::HashMap<String, String>>,
@@ -128,201 +159,116 @@ pub fn print_positions_table(
     display_limit: Option<usize>,
     all: bool,
 ) {
-    let mut table = Table::new();
-    table.load_preset(UTF8_FULL)
-        .set_content_arrangement(ContentArrangement::Dynamic);
-
-    let filtered_groups: Vec<Vec<ContractMetric>> = if all {
-        position_groups.to_vec()
-    } else {
-        position_groups.iter()
-            .map(|group| {
-                group.iter().filter(|p| {
-                    let total_shares: f64 = p.total_shares.values().map(|v| v.unwrap_or_default()).sum();
-                    total_shares.abs() > 0.1
-                })
-                .cloned()
-                .collect::<Vec<_>>()
+    let filtered: Vec<&Vec<ContractMetric>> = position_groups
+        .iter()
+        .filter(|group| {
+            all || group.iter().any(|p| {
+                p.total_shares.values().any(|v| v.is_some_and(|n| n.abs() > 0.000001))
             })
-            .filter(|group| !group.is_empty())
-            .collect()
-    };
+        })
+        .collect();
+    let visible: Vec<_> = filtered
+        .iter()
+        .take(display_limit.unwrap_or(usize::MAX))
+        .copied()
+        .collect();
 
-    let mut headers = vec![
+    let show_user = titles.is_none();
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .set_content_arrangement(ContentArrangement::Dynamic);
+    let mut header = vec![
         Cell::new("Market").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Outcome").add_attribute(Attribute::Bold).fg(Color::Cyan),
+        Cell::new("Shares").add_attribute(Attribute::Bold).fg(Color::Cyan),
         Cell::new("Invested").add_attribute(Attribute::Bold).fg(Color::Cyan),
         Cell::new("Profit").add_attribute(Attribute::Bold).fg(Color::Cyan),
         Cell::new("Profit %").add_attribute(Attribute::Bold).fg(Color::Cyan),
     ];
-
-    let show_user = titles.is_none();
     if show_user {
-        headers.push(Cell::new("User").add_attribute(Attribute::Bold).fg(Color::Cyan));
+        header.push(Cell::new("User").add_attribute(Attribute::Bold).fg(Color::Cyan));
     }
+    table.add_row(header);
+    table.column_mut(0).expect("Market column").set_constraint(
+        comfy_table::ColumnConstraint::LowerBoundary(comfy_table::Width::Fixed(30)),
+    );
 
-    table.add_row(headers);
-
-    // Prioritize space for the Market column and set reasonable boundaries
-    table.column_mut(0).expect("Market column missing")
-        .set_constraint(comfy_table::ColumnConstraint::LowerBoundary(comfy_table::Width::Fixed(30)));
-    
-    // Numerical columns should be tight
-    for i in 2..5 {
-        table.column_mut(i).expect("Column missing")
-            .set_constraint(comfy_table::ColumnConstraint::ContentWidth);
-    }
-
-    let mut max_pos = 0.01;
-    let mut min_neg = -0.01;
-
-    for group in &filtered_groups {
-        for p in group {
-            for (outcome, value) in &p.total_shares {
-                let val = value.unwrap_or_default();
-                if val.abs() < 0.1 { continue; }
-                let invested = p.total_spent.get(outcome).unwrap_or(&None).unwrap_or_default();
-                let profit = val - invested;
-                if profit > max_pos { max_pos = profit; }
-                if profit < min_neg { min_neg = profit; }
-            }
-        }
-    }
-
-    let mut total_invested = 0.0;
-    let mut total_profit = 0.0;
-
-    let display_groups = if let Some(limit) = display_limit {
-        filtered_groups.iter().take(limit).collect::<Vec<_>>()
-    } else {
-        filtered_groups.iter().collect::<Vec<_>>()
-    };
-
-    // Calculate totals from ALL positions
-    for group in position_groups {
-        for p in group {
-            total_invested += p.invested.unwrap_or_default();
-            total_profit += p.profit.unwrap_or_default();
-        }
-    }
-
-    let mut displayed_invested = 0.0;
-    let mut displayed_profit = 0.0;
-
-    let mut all_displayed_positions = Vec::new();
-    for group in display_groups {
-        let mut group_positions = Vec::new();
-        for p in group {
-            let mut sorted_outcomes: Vec<_> = p.total_shares.keys().collect();
-            sorted_outcomes.sort();
-            
-            for outcome in sorted_outcomes {
-                let value = p.total_shares.get(outcome).unwrap_or(&None).unwrap_or_default();
-                if value.abs() < 0.1 { continue; }
-                
-                let invested = p.total_spent.get(outcome).unwrap_or(&None).unwrap_or_default();
-                // Heuristic: subtract loan from the outcome profit if it's a single-position contract (like binary/numeric)
-                let loan = if p.total_shares.len() == 1 { p.loan.unwrap_or_default() } else { 0.0 };
-                let profit = value - invested - loan;
-                let profit_pct = if invested > 0.1 { (profit / invested) * 100.0 } else { 0.0 };
-                
-                group_positions.push((outcome, value, invested, profit, profit_pct, p));
-            }
-        }
-        all_displayed_positions.push(group_positions);
-    }
-
-    for group_pos in &all_displayed_positions {
-        for (_outcome, _value, invested, profit, _pct, _p) in group_pos {
-            displayed_invested += *invested;
-            displayed_profit += *profit;
-        }
-    }
-
-    for group_pos in all_displayed_positions {
-        let mut row_in_group = 0;
-        for (outcome, _value, invested, profit, profit_pct, p) in group_pos {
-            let color = if profit > 0.0 {
-                let ratio = (profit / max_pos).min(1.0).powf(0.6);
-                Color::Rgb { 
-                    r: (200.0 * (1.0 - ratio)) as u8, 
-                    g: (200.0 + 55.0 * ratio) as u8, 
-                    b: (200.0 * (1.0 - ratio)) as u8 
-                }
-            } else if profit < 0.0 {
-                let ratio = (profit / min_neg).min(1.0).powf(0.6);
-                Color::Rgb { 
-                    r: (200.0 + 55.0 * ratio) as u8, 
-                    g: (200.0 * (1.0 - ratio)) as u8, 
-                    b: (200.0 * (1.0 - ratio)) as u8 
-                }
+    for group in &visible {
+        for (index, p) in group.iter().enumerate() {
+            let market = if index == 0 {
+                titles.and_then(|m| m.get(&p.contract_id))
+                    .map(String::as_str)
+                    .unwrap_or(&p.contract_id)
             } else {
-                Color::Reset
+                ""
             };
-
-            let mut market_display = if row_in_group == 0 {
-                titles
-                    .and_then(|m| m.get(&p.contract_id))
-                    .cloned()
-                    .unwrap_or_else(|| p.contract_id.clone())
-            } else {
-                "".to_string()
-            };
-
-            if let Some(limit) = max_width {
-                let limit = limit as usize;
-                if market_display.chars().count() > limit {
-                    market_display = market_display.chars().take(limit - 3).collect::<String>() + "...";
-                }
-            }
-
             let mut row = vec![
-                Cell::new(market_display),
-                Cell::new(outcome), 
-                Cell::new(&format!("{:.2}", invested)),
-                Cell::new(&format!("{:.2}", profit)).fg(color),
-                Cell::new(&format!("{:.2}%", profit_pct)).fg(color),
+                Cell::new(abbreviate(market, max_width)),
+                Cell::new(describe_shares(&p.total_shares)),
+                Cell::new(money(p.invested)),
+                profit_cell(p.profit, false),
+                profit_cell(p.profit_percent, true),
             ];
-
             if show_user {
-                let user_display = if row_in_group == 0 {
+                row.push(Cell::new(if index == 0 {
                     p.user_username.as_deref().unwrap_or(&p.user_id)
                 } else {
                     ""
-                };
-                row.push(Cell::new(user_display));
+                }));
             }
-
             table.add_row(row);
-            row_in_group += 1;
         }
     }
 
-    let disp_total_color = if displayed_profit > 0.0 { Color::Green } else if displayed_profit < 0.0 { Color::Red } else { Color::Reset };
-    let mut disp_footer = vec![
-        Cell::new("DISPLAYED TOTAL").add_attribute(Attribute::Bold),
-        Cell::new(""),
-        Cell::new(&format!("{:.2}", displayed_invested)).add_attribute(Attribute::Bold).fg(Color::Yellow),
-        Cell::new(&format!("{:.2}", displayed_profit)).add_attribute(Attribute::Bold).fg(disp_total_color),
-        Cell::new(&format!("{:.2}%", (displayed_profit / displayed_invested.max(1.0)) * 100.0)).add_attribute(Attribute::Bold).fg(disp_total_color),
-    ];
-    if show_user {
-        disp_footer.push(Cell::new(""));
-    }
-    table.add_row(disp_footer);
+    // Both totals are sums of the API's position-level invested/profit fields.
+    let totals = |groups: &[&Vec<ContractMetric>]| -> (f64, f64, usize) {
+        groups.iter().flat_map(|g| g.iter()).fold(
+            (0.0, 0.0, 0),
+            |(invested, profit, missing), p| (
+                invested + p.invested.unwrap_or_default(),
+                profit + p.profit.unwrap_or_default(),
+                missing + usize::from(p.invested.is_none() || p.profit.is_none()),
+            ),
+        )
+    };
+    let mut add_total = |label: &str, groups: &[&Vec<ContractMetric>]| {
+        let (invested, profit, missing) = totals(groups);
+        let mut row = vec![
+            Cell::new(label).add_attribute(Attribute::Bold),
+            Cell::new(""),
+            Cell::new(format!("{invested:.2}")).add_attribute(Attribute::Bold),
+            profit_cell(if missing == 0 { Some(profit) } else { None }, false),
+            profit_cell(
+                if missing == 0 && invested > 0.0 {
+                    Some(100.0 * profit / invested)
+                } else {
+                    None
+                },
+                true,
+            ),
+        ];
+        if show_user {
+            row.push(Cell::new(""));
+        }
+        table.add_row(row);
+    };
+    add_total("DISPLAYED TOTAL", &visible);
+    // Include closed positions in the full total only when --all is supplied.
+    add_total("TOTAL", &filtered);
 
-    let total_color = if total_profit > 0.0 { Color::Green } else if total_profit < 0.0 { Color::Red } else { Color::Reset };
-    let mut footer = vec![
-        Cell::new("TOTAL").add_attribute(Attribute::Bold),
-        Cell::new(""),
-        Cell::new(&format!("{:.2}", total_invested)).add_attribute(Attribute::Bold).fg(Color::Yellow),
-        Cell::new(&format!("{:.2}", total_profit)).add_attribute(Attribute::Bold).fg(total_color),
-        Cell::new(&format!("{:.2}%", (total_profit / total_invested.max(1.0)) * 100.0)).add_attribute(Attribute::Bold).fg(total_color),
-    ];
-    if show_user {
-        footer.push(Cell::new(""));
-    }
-    table.add_row(footer);
+    println!("{table}");
+}
 
-    println!("{}", table);
+#[cfg(test)]
+mod display_tests {
+    use super::abbreviate;
+
+    #[test]
+    fn abbreviate_handles_tiny_widths_and_utf8() {
+        assert_eq!(abbreviate("abcdef", Some(0)), "");
+        assert_eq!(abbreviate("abcdef", Some(2)), "ab");
+        assert_eq!(abbreviate("abcdef", Some(5)), "ab...");
+        assert_eq!(abbreviate("áéíóú", Some(4)), "á...");
+        assert_eq!(abbreviate("test", None), "test");
+    }
 }

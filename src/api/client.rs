@@ -1,8 +1,27 @@
-use anyhow::{Context, Result};
-use reqwest::{header, Client};
-use tracing::debug;
-use crate::api::models::*;
+use anyhow::{bail, Context, Result};
+use reqwest::{header, Client, StatusCode};
 use serde::Serialize;
+use std::time::Duration;
+use tracing::debug;
+
+use crate::api::models::*;
+
+const BASE_URL: &str = "https://api.manifold.markets/v0";
+const MAX_GET_ATTEMPTS: u32 = 3;
+
+#[derive(Debug, thiserror::Error)]
+pub enum ApiError {
+    #[error("Manifold API returned HTTP {status}: {body}")]
+    Http { status: StatusCode, body: String },
+}
+
+/// Only a missing username permits falling back to lookup by ID.
+pub fn is_not_found(error: &anyhow::Error) -> bool {
+    matches!(
+        error.downcast_ref::<ApiError>(),
+        Some(ApiError::Http { status: StatusCode::NOT_FOUND, .. })
+    )
+}
 
 pub struct ManifoldClient {
     client: Client,
@@ -12,153 +31,280 @@ pub struct ManifoldClient {
 impl ManifoldClient {
     pub fn new(api_key: Option<String>) -> Self {
         let mut headers = header::HeaderMap::new();
-        if let Some(ref key) = api_key {
-            let mut auth_value = header::HeaderValue::from_str(&format!("Key {}", key))
-                .expect("Invalid API key format");
-            auth_value.set_sensitive(true);
-            headers.insert(header::AUTHORIZATION, auth_value);
+        if let Some(key) = api_key {
+            let mut value = header::HeaderValue::from_str(&format!("Key {key}"))
+                .expect("Invalid API key header format");
+            value.set_sensitive(true);
+            headers.insert(header::AUTHORIZATION, value);
         }
 
         let client = Client::builder()
             .default_headers(headers)
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(30))
             .build()
-            .expect("Failed to build HTTP client");
+            .expect("Failed to construct HTTP client");
 
         Self {
             client,
-            base_url: "https://api.manifold.markets/v0".to_string(),
+            base_url: BASE_URL.to_string(),
         }
     }
 
-    async fn get<T>(&self, endpoint: &str, query: Option<&[( &str, String )]>) -> Result<T> 
-    where T: for<'de> serde::Deserialize<'de> {
+    /// Retry only idempotent GETs on transient gateway/connectivity errors.
+    /// Never retry 429 automatically: callers must reduce request frequency.
+    async fn get<T>(&self, endpoint: &str, query: Option<&[(&str, String)]>) -> Result<T>
+    where
+        T: serde::de::DeserializeOwned,
+    {
         let url = format!("{}/{}", self.base_url, endpoint);
-        debug!("GET request to: {}", url);
-        
-        let mut request = self.client.get(&url);
-        if let Some(q) = query {
-            request = request.query(q);
+        debug!(url, "GET Manifold");
+        for attempt in 0..MAX_GET_ATTEMPTS {
+            let mut request = self.client.get(&url);
+            if let Some(params) = query {
+                request = request.query(params);
+            }
+            match request.send().await {
+                Ok(response) => {
+                    let status = response.status();
+                    if matches!(status.as_u16(), 502 | 503 | 504)
+                        && attempt + 1 < MAX_GET_ATTEMPTS
+                    {
+                        tokio::time::sleep(Duration::from_millis(400 * 2_u64.pow(attempt))).await;
+                        continue;
+                    }
+                    if !status.is_success() {
+                        let body = response.text().await.unwrap_or_default();
+                        return Err(ApiError::Http {
+                            status,
+                            body: body.chars().take(1200).collect(),
+                        }
+                        .into());
+                    }
+                    return response
+                        .json::<T>()
+                        .await
+                        .with_context(|| format!("Invalid response from GET /{endpoint}"));
+                }
+                Err(err)
+                    if (err.is_connect() || err.is_timeout())
+                        && attempt + 1 < MAX_GET_ATTEMPTS =>
+                {
+                    tokio::time::sleep(Duration::from_millis(400 * 2_u64.pow(attempt))).await;
+                }
+                Err(err) => return Err(err).with_context(|| format!("GET /{endpoint} failed")),
+            }
         }
-
-        let response = request.send().await.context("Failed to send GET request")?;
-        
-        if !response.status().is_success() {
-            let error_text = response.text().await.unwrap_or_default();
-            return Err(anyhow::anyhow!("API error: {}", error_text));
-        }
-
-        response.json::<T>().await.context("Failed to parse JSON response")
+        unreachable!("GET retry loop must return or fail")
     }
 
+    /// POSTs are never retried: repeating a trade can create duplicate orders.
     async fn post<T, B>(&self, endpoint: &str, body: B) -> Result<T>
-    where 
-        T: for<'de> serde::Deserialize<'de>,
+    where
+        T: serde::de::DeserializeOwned,
         B: Serialize,
     {
         let url = format!("{}/{}", self.base_url, endpoint);
-        debug!("POST request to: {}", url);
-
-        let response = self.client.post(&url)
+        debug!(url, "POST Manifold");
+        let response = self
+            .client
+            .post(&url)
             .json(&body)
             .send()
             .await
-            .context("Failed to send POST request")?;
-
-        if !response.status().is_success() {
-            let error_text = response.text().await.unwrap_or_default();
-            return Err(anyhow::anyhow!("API error: {}", error_text));
+            .with_context(|| format!("POST /{endpoint} failed"))?;
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(ApiError::Http {
+                status,
+                body: body.chars().take(1200).collect(),
+            }
+            .into());
         }
-
-        response.json::<T>().await.context("Failed to parse JSON response")
+        response
+            .json::<T>()
+            .await
+            .with_context(|| format!("Invalid response from POST /{endpoint}"))
     }
 
-    // User Endpoints
     pub async fn get_me(&self) -> Result<User> {
         self.get("me", None).await
     }
 
     pub async fn get_user_by_username(&self, username: &str) -> Result<User> {
-        self.get(&format!("user/{}", username), None).await
+        self.get(&format!("user/{username}"), None).await
     }
 
     pub async fn get_user_by_id(&self, id: &str) -> Result<User> {
-        self.get(&format!("user/by-id/{}", id), None).await
+        self.get(&format!("user/by-id/{id}"), None).await
     }
 
     pub async fn get_user_portfolio(&self, user_id: &str) -> Result<LivePortfolioMetrics> {
-        self.get("get-user-portfolio", Some(&[("userId", user_id.to_string())])).await
+        self.get("get-user-portfolio", Some(&[("userId", user_id.to_owned())]))
+            .await
     }
 
-    pub async fn get_user_portfolio_history(&self, user_id: &str, period: &str) -> Result<Vec<PortfolioMetrics>> {
-        self.get("get-user-portfolio-history", Some(&[
-            ("userId", user_id.to_string()),
-            ("period", period.to_string()),
-        ])).await
+    pub async fn get_user_portfolio_history(
+        &self,
+        user_id: &str,
+        period: &str,
+    ) -> Result<Vec<PortfolioMetrics>> {
+        self.get(
+            "get-user-portfolio-history",
+            Some(&[
+                ("userId", user_id.to_owned()),
+                ("period", period.to_owned()),
+            ]),
+        )
+        .await
     }
 
-    pub async fn get_user_contract_metrics(&self, user_id: &str, limit: i32) -> Result<UserContractMetricsResponse> {
-        self.get("get-user-contract-metrics-with-contracts", Some(&[
-            ("userId", user_id.to_string()),
-            ("limit", limit.to_string()),
-        ])).await
+    pub async fn get_user_contract_metrics(
+        &self,
+        user_id: &str,
+        limit: i32,
+    ) -> Result<UserContractMetricsResponse> {
+        self.get(
+            "get-user-contract-metrics-with-contracts",
+            Some(&[
+                ("userId", user_id.to_owned()),
+                ("limit", limit.to_string()),
+            ]),
+        )
+        .await
     }
 
-    pub async fn get_market_positions(&self, market_id: &str, top: Option<i32>, bottom: Option<i32>) -> Result<Vec<ContractMetric>> {
+    pub async fn get_market_positions(
+        &self,
+        market_id: &str,
+        top: Option<i32>,
+        bottom: Option<i32>,
+    ) -> Result<Vec<ContractMetric>> {
         let mut query = Vec::new();
-        if let Some(t) = top { query.push(("top", t.to_string())); }
-        if let Some(b) = bottom { query.push(("bottom", b.to_string())); }
-        
-        self.get(&format!("market/{}/positions", market_id), Some(&query)).await
+        if let Some(n) = top {
+            query.push(("top", n.to_string()));
+        }
+        if let Some(n) = bottom {
+            query.push(("bottom", n.to_string()));
+        }
+        self.get(&format!("market/{market_id}/positions"), Some(&query))
+            .await
     }
 
-    // Market Endpoints
-    pub async fn list_markets(&self, limit: Option<i32>, sort: Option<&str>, order: Option<&str>, before: Option<&str>) -> Result<Vec<LiteMarket>> {
+    pub async fn list_markets(
+        &self,
+        limit: Option<i32>,
+        sort: Option<&str>,
+        order: Option<&str>,
+        before: Option<&str>,
+    ) -> Result<Vec<LiteMarket>> {
         let mut query = Vec::new();
-        if let Some(l) = limit { query.push(("limit", l.to_string())); }
-        if let Some(s) = sort { query.push(("sort", s.to_string())); }
-        if let Some(o) = order { query.push(("order", o.to_string())); }
-        if let Some(b) = before { query.push(("before", b.to_string())); }
-        
+        if let Some(n) = limit {
+            query.push(("limit", n.to_string()));
+        }
+        if let Some(s) = sort {
+            query.push(("sort", s.to_owned()));
+        }
+        if let Some(s) = order {
+            query.push(("order", s.to_owned()));
+        }
+        if let Some(s) = before {
+            query.push(("before", s.to_owned()));
+        }
         self.get("markets", Some(&query)).await
     }
 
-    pub async fn search_markets(&self, term: &str, limit: Option<i32>, sort: Option<&str>, filter: Option<&str>) -> Result<Vec<LiteMarket>> {
-        let mut query = Vec::new();
-        query.push(("term", term.to_string()));
-        if let Some(l) = limit { query.push(("limit", l.to_string())); }
-        if let Some(s) = sort { query.push(("sort", s.to_string())); }
-        if let Some(f) = filter { query.push(("filter", f.to_string())); }
-
+    pub async fn search_markets(
+        &self,
+        term: &str,
+        limit: Option<i32>,
+        sort: Option<&str>,
+        filter: Option<&str>,
+    ) -> Result<Vec<LiteMarket>> {
+        let mut query = vec![("term", term.to_owned())];
+        if let Some(n) = limit {
+            query.push(("limit", n.to_string()));
+        }
+        if let Some(s) = sort {
+            query.push(("sort", s.to_owned()));
+        }
+        if let Some(s) = filter {
+            query.push(("filter", s.to_owned()));
+        }
         self.get("search-markets", Some(&query)).await
     }
 
     pub async fn get_market_by_id(&self, id: &str) -> Result<FullMarket> {
-        self.get(&format!("market/{}", id), None).await
+        self.get(&format!("market/{id}"), None).await
     }
 
     pub async fn get_market_by_slug(&self, slug: &str) -> Result<FullMarket> {
-        self.get(&format!("slug/{}", slug), None).await
+        self.get(&format!("slug/{slug}"), None).await
     }
 
-    // Bet Endpoints
-    pub async fn place_bet(&self, contract_id: &str, amount: f64, outcome: &str) -> Result<serde_json::Value> {
+    pub async fn market_probabilities(&self, ids: &[String]) -> Result<serde_json::Value> {
+        if ids.is_empty() || ids.len() > 100 || ids.iter().any(|id| id.trim().is_empty()) {
+            bail!("Supply 1 to 100 nonempty market IDs");
+        }
+        let query: Vec<(&str, String)> = ids.iter().map(|id| ("ids", id.clone())).collect();
+        self.get("market-probs", Some(&query)).await
+    }
+
+    pub async fn place_bet(
+        &self,
+        contract_id: &str,
+        amount: f64,
+        outcome: &str,
+        execute: bool,
+    ) -> Result<serde_json::Value> {
+        validate_bet(amount, outcome)?;
         #[derive(Serialize)]
         #[serde(rename_all = "camelCase")]
         struct BetRequest<'a> {
             amount: f64,
             outcome: &'a str,
             contract_id: &'a str,
+            dry_run: bool,
         }
-        
-        self.post("bet", BetRequest { amount, outcome, contract_id }).await
+        self.post(
+            "bet",
+            BetRequest {
+                amount,
+                outcome,
+                contract_id,
+                dry_run: !execute,
+            },
+        )
+        .await
     }
 
-    pub async fn list_bets(&self, user_id: Option<&str>, market_id: Option<&str>, limit: Option<i32>) -> Result<Vec<Bet>> {
+    pub async fn list_bets(
+        &self,
+        user_id: Option<&str>,
+        market_id: Option<&str>,
+        limit: Option<i32>,
+    ) -> Result<Vec<Bet>> {
         let mut query = Vec::new();
-        if let Some(u) = user_id { query.push(("userId", u.to_string())); }
-        if let Some(m) = market_id { query.push(("contractId", m.to_string())); }
-        if let Some(l) = limit { query.push(("limit", l.to_string())); }
-
+        if let Some(id) = user_id {
+            query.push(("userId", id.to_owned()));
+        }
+        if let Some(id) = market_id {
+            query.push(("contractId", id.to_owned()));
+        }
+        if let Some(n) = limit {
+            query.push(("limit", n.to_string()));
+        }
         self.get("bets", Some(&query)).await
     }
+}
+
+pub(crate) fn validate_bet(amount: f64, outcome: &str) -> Result<()> {
+    if !amount.is_finite() || amount <= 0.0 {
+        bail!("Bet amount must be a finite, positive number");
+    }
+    if !matches!(outcome, "YES" | "NO") {
+        bail!("Binary bet outcome must be YES or NO");
+    }
+    Ok(())
 }
