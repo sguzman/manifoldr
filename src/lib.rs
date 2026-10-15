@@ -4,8 +4,8 @@
 //! simulation unless explicitly passed `execute = true`.
 
 pub mod api;
-pub mod realtime;
 pub mod mcp;
+pub mod realtime;
 
 #[cfg(test)]
 #[path = "tests.rs"]
