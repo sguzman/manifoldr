@@ -4,7 +4,7 @@ mod utils;
 
 use anyhow::{Result, bail};
 use clap::{CommandFactory, Parser};
-use cli::{BetCommands, Cli, Commands, MarketCommands, TopicCommands, UserCommands};
+use cli::{BetCommands, Cli, Commands, MarketCommands, McpCommands, TopicCommands, UserCommands};
 use dotenvy::dotenv;
 use manifoldr::api::client::{BetFilters, ManifoldClient, is_not_found};
 use manifoldr::api::models::ContractMetric;
@@ -36,7 +36,10 @@ async fn main() -> Result<()> {
         manifoldr::realtime::run(topics, count).await?;
         return Ok(());
     }
-    let mut client = ManifoldClient::new(api_key)?;
+    // MCP never forwards API credentials or exposes authenticated operations.
+    // It shares the ordinary public cache policy, not any account session.
+    let is_mcp = matches!(&cli.command, Commands::Mcp { .. });
+    let mut client = ManifoldClient::new(if is_mcp { None } else { api_key })?;
     if !cli.no_cache {
         let cache_root = cli.cache_dir.or_else(|| {
             std::env::var_os("XDG_CACHE_HOME")
@@ -63,6 +66,14 @@ async fn main() -> Result<()> {
         Commands::Stream { .. } | Commands::Completions { .. } => {
             unreachable!("handled before client initialization")
         }
+        Commands::Mcp { command } => match command {
+            McpCommands::Serve { bind, allow_origins } => {
+                if cli.offline {
+                    bail!("MCP server requires online mode; --offline is not supported");
+                }
+                manifoldr::mcp::serve(client, bind, allow_origins).await?;
+            }
+        },
         Commands::User { command } => handle_user_command(client, command, json).await?,
         Commands::Topic { command } => handle_topic_command(client, command).await?,
         Commands::Market { command } => handle_market_command(client, command, json).await?,

@@ -24,3 +24,7 @@ url = "2.5"
 
 tokio-tungstenite = { version = "0.30", features = ["rustls-tls-webpki-roots"] }
 clap_complete = "4.6"
+
+# Official MCP SDK and its Streamable HTTP transport (one shared server).
+rmcp = { version = "3.5", default-features = false, features = ["server", "macros", "schemars", "transport-streamable-http-server"] }
+axum = "0.8"

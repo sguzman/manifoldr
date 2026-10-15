@@ -5,6 +5,7 @@
 
 pub mod api;
 pub mod realtime;
+pub mod mcp;
 
 #[cfg(test)]
 #[path = "tests.rs"]

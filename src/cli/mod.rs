@@ -47,6 +47,11 @@ pub enum Commands {
         #[arg(long, default_value_t = 0)]
         count: usize,
     },
+    /// Run one shared read-only MCP endpoint for local/LAN agents
+    Mcp {
+        #[command(subcommand)]
+        command: McpCommands,
+    },
     /// User related commands
     User {
         #[command(subcommand)]
@@ -66,6 +71,20 @@ pub enum Commands {
     Bet {
         #[command(subcommand)]
         command: BetCommands,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum McpCommands {
+    /// Start a persistent Streamable HTTP MCP server. Loopback-only by default.
+    Serve {
+        /// Interface and port; use 0.0.0.0:8877 to allow LAN clients
+        #[arg(long, default_value = "127.0.0.1:8877")]
+        bind: std::net::SocketAddr,
+        /// Exact HTTP Origin values permitted for browser clients (repeatable).
+        /// Non-browser MCP clients generally do not send an Origin header.
+        #[arg(long = "allow-origin")]
+        allow_origins: Vec<String>,
     },
 }
 
