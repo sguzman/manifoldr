@@ -1,5 +1,5 @@
-use anyhow::{bail, Context, Result};
-use reqwest::{header, Client, StatusCode};
+use anyhow::{Context, Result, bail};
+use reqwest::{Client, StatusCode, header};
 use serde::Serialize;
 use std::time::Duration;
 use tracing::debug;
@@ -19,7 +19,10 @@ pub enum ApiError {
 pub fn is_not_found(error: &anyhow::Error) -> bool {
     matches!(
         error.downcast_ref::<ApiError>(),
-        Some(ApiError::Http { status: StatusCode::NOT_FOUND, .. })
+        Some(ApiError::Http {
+            status: StatusCode::NOT_FOUND,
+            ..
+        })
     )
 }
 
@@ -67,8 +70,7 @@ impl ManifoldClient {
             match request.send().await {
                 Ok(response) => {
                     let status = response.status();
-                    if matches!(status.as_u16(), 502 | 503 | 504)
-                        && attempt + 1 < MAX_GET_ATTEMPTS
+                    if matches!(status.as_u16(), 502..=504) && attempt + 1 < MAX_GET_ATTEMPTS
                     {
                         tokio::time::sleep(Duration::from_millis(400 * 2_u64.pow(attempt))).await;
                         continue;
@@ -87,8 +89,7 @@ impl ManifoldClient {
                         .with_context(|| format!("Invalid response from GET /{endpoint}"));
                 }
                 Err(err)
-                    if (err.is_connect() || err.is_timeout())
-                        && attempt + 1 < MAX_GET_ATTEMPTS =>
+                    if (err.is_connect() || err.is_timeout()) && attempt + 1 < MAX_GET_ATTEMPTS =>
                 {
                     tokio::time::sleep(Duration::from_millis(400 * 2_u64.pow(attempt))).await;
                 }
@@ -141,8 +142,11 @@ impl ManifoldClient {
     }
 
     pub async fn get_user_portfolio(&self, user_id: &str) -> Result<LivePortfolioMetrics> {
-        self.get("get-user-portfolio", Some(&[("userId", user_id.to_owned())]))
-            .await
+        self.get(
+            "get-user-portfolio",
+            Some(&[("userId", user_id.to_owned())]),
+        )
+        .await
     }
 
     pub async fn get_user_portfolio_history(
@@ -167,10 +171,7 @@ impl ManifoldClient {
     ) -> Result<UserContractMetricsResponse> {
         self.get(
             "get-user-contract-metrics-with-contracts",
-            Some(&[
-                ("userId", user_id.to_owned()),
-                ("limit", limit.to_string()),
-            ]),
+            Some(&[("userId", user_id.to_owned()), ("limit", limit.to_string())]),
         )
         .await
     }

@@ -6,14 +6,14 @@ Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for 
 
 - [x] Inventory existing commands, source code, dependencies, and historical output
 - [x] Recheck upstream API documentation and identify schema and accounting risks
-- [ ] Make trade execution explicitly opt-in; default to API-supported simulation
-- [ ] Stop estimating portfolio P/L from raw share counts; display API metrics
-- [ ] Narrow position/contract deserialization to the fields actually needed
-- [ ] Add bounded HTTP timeouts, transient GET retries, and actionable error output
-- [ ] Add consistent JSON output and safe watch polling behavior
-- [ ] Add regression fixtures, offline unit tests, rustfmt/clippy/test CI
-- [ ] Clean accidental generated artifacts from version control
-- [ ] Rewrite README and add development/security notes
+- [x] Make trade execution explicitly opt-in; default to API-supported simulation
+- [x] Stop estimating portfolio P/L from raw share counts; display API metrics
+- [x] Narrow position/contract deserialization to the fields actually needed
+- [x] Add bounded HTTP timeouts, transient GET retries, and actionable error output
+- [x] Add consistent JSON output and safe watch polling behavior
+- [x] Add regression fixtures, offline unit tests, rustfmt/clippy/test CI
+- [x] Clean accidental generated artifacts from version control
+- [x] Rewrite README and add development/security notes
 - [ ] Verify a clean build, unit tests, and representative live read-only API calls
   (Do not mark this complete until actually run and verified.)
 

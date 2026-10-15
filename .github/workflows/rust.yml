@@ -19,18 +19,14 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      # Temporary formatting diagnostic; revert to a strict check after applying the result.
-      - name: Format and report sources
-        run: |
-          cargo fmt --all
-          for file in src/main.rs src/cli/mod.rs src/api/client.rs src/api/models.rs src/utils.rs src/tests.rs; do
-            printf 'FORMATSTART:%s\n' "$file"
-            base64 -w0 "$file"
-            printf '\nFORMATEND:%s\n' "$file"
-          done
+      - name: Formatting
+        run: cargo fmt --all -- --check
       - name: Static analysis
         run: cargo clippy --locked --all-targets -- -D warnings
       - name: Unit tests
         run: cargo test --locked --all-targets
       - name: CLI help
         run: cargo run --locked -- --help
+      - name: Public API read-only smoke
+        continue-on-error: true
+        run: cargo run --locked -- --json market list --limit 1

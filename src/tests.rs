@@ -36,7 +36,10 @@ mod tests {
         assert_eq!(response.contracts.len(), 1);
         let market = &response.contracts[0];
         assert_eq!(market.id, "ghI9lZO0CP");
-        assert_eq!(response.metrics_by_contract[&market.id][0].profit, Some(0.0));
+        assert_eq!(
+            response.metrics_by_contract[&market.id][0].profit,
+            Some(0.0)
+        );
     }
 
     #[test]

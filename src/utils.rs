@@ -1,55 +1,72 @@
-use comfy_table::{Attribute, Cell, Color, Table, ContentArrangement};
-use comfy_table::presets::UTF8_FULL;
 use crate::api::models::*;
+use comfy_table::presets::UTF8_FULL;
+use comfy_table::{Attribute, Cell, Color, ContentArrangement, Table};
 
 pub fn print_user_table(user: &User) {
     let mut table = Table::new();
     table.set_content_arrangement(ContentArrangement::Dynamic);
-    
+
     table.add_row(vec![
-        Cell::new("Field").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Value").add_attribute(Attribute::Bold).fg(Color::Cyan),
+        Cell::new("Field")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
+        Cell::new("Value")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
     ]);
 
     table.add_row(vec!["ID", &user.id]);
     table.add_row(vec!["Username", &user.username]);
     table.add_row(vec!["Name", &user.name]);
     table.add_row(vec!["Balance", &format!("{:.2}", user.balance)]);
-    table.add_row(vec!["Total Deposits", &format!("{:.2}", user.total_deposits)]);
+    table.add_row(vec![
+        "Total Deposits",
+        &format!("{:.2}", user.total_deposits),
+    ]);
     table.add_row(vec!["Bio", user.bio.as_deref().unwrap_or("N/A")]);
-    
+
     println!("{}", table);
 }
 
 pub fn print_markets_table(markets: &[LiteMarket]) {
     let mut table = Table::new();
     table.set_content_arrangement(ContentArrangement::Dynamic);
-    
+
     table.add_row(vec![
-        Cell::new("ID").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Question").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Prob").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Vol").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Resolved").add_attribute(Attribute::Bold).fg(Color::Cyan),
+        Cell::new("ID")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
+        Cell::new("Question")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
+        Cell::new("Prob")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
+        Cell::new("Vol")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
+        Cell::new("Resolved")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
     ]);
 
     for m in markets {
-        let prob = m.probability.map(|p| format!("{:.0}%", p * 100.0)).unwrap_or_else(|| "N/A".to_string());
+        let prob = m
+            .probability
+            .map(|p| format!("{:.0}%", p * 100.0))
+            .unwrap_or_else(|| "N/A".to_string());
         let resolved = if m.is_resolved {
             m.resolution.clone().unwrap_or_else(|| "YES".to_string())
         } else {
             "NO".to_string()
         };
 
-        let volume = m.volume.map(|v| format!("{:.0}", v)).unwrap_or_else(|| "N/A".to_string());
+        let volume = m
+            .volume
+            .map(|v| format!("{:.0}", v))
+            .unwrap_or_else(|| "N/A".to_string());
 
-        table.add_row(vec![
-            &m.id,
-            &m.question,
-            &prob,
-            &volume,
-            &resolved,
-        ]);
+        table.add_row(vec![&m.id, &m.question, &prob, &volume, &resolved]);
     }
 
     println!("{}", table);
@@ -60,10 +77,18 @@ pub fn print_bets_table(bets: &[Bet]) {
     table.set_content_arrangement(ContentArrangement::Dynamic);
 
     table.add_row(vec![
-        Cell::new("ID").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Amount").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Outcome").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Market ID").add_attribute(Attribute::Bold).fg(Color::Cyan),
+        Cell::new("ID")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
+        Cell::new("Amount")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
+        Cell::new("Outcome")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
+        Cell::new("Market ID")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
     ]);
 
     for b in bets {
@@ -82,14 +107,25 @@ pub fn print_portfolio_history_table(history: &[PortfolioMetrics]) {
     table.set_content_arrangement(ContentArrangement::Dynamic);
 
     table.add_row(vec![
-        Cell::new("Timestamp").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Investment").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Balance").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Profit").add_attribute(Attribute::Bold).fg(Color::Cyan),
+        Cell::new("Timestamp")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
+        Cell::new("Investment")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
+        Cell::new("Balance")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
+        Cell::new("Profit")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
     ]);
 
     for h in history {
-        let profit = h.profit.map(|p| format!("{:.2}", p)).unwrap_or_else(|| "N/A".to_string());
+        let profit = h
+            .profit
+            .map(|p| format!("{:.2}", p))
+            .unwrap_or_else(|| "N/A".to_string());
         table.add_row(vec![
             &h.timestamp.to_string(), // Could format this better but keeping it simple
             &format!("{:.2}", h.investment_value),
@@ -118,9 +154,7 @@ fn describe_shares(shares: &std::collections::HashMap<String, Option<f64>>) -> S
     let mut positions: Vec<_> = shares
         .iter()
         .filter_map(|(outcome, value)| match value {
-            Some(n) if n.is_finite() && n.abs() > 0.000001 => {
-                Some(format!("{outcome}: {n:.2}"))
-            }
+            Some(n) if n.is_finite() && n.abs() > 0.000001 => Some(format!("{outcome}: {n:.2}")),
             _ => None,
         })
         .collect();
@@ -163,7 +197,9 @@ pub fn print_positions_table(
         .iter()
         .filter(|group| {
             all || group.iter().any(|p| {
-                p.total_shares.values().any(|v| v.is_some_and(|n| n.abs() > 0.000001))
+                p.total_shares
+                    .values()
+                    .any(|v| v.is_some_and(|n| n.abs() > 0.000001))
             })
         })
         .collect();
@@ -179,14 +215,28 @@ pub fn print_positions_table(
         .load_preset(UTF8_FULL)
         .set_content_arrangement(ContentArrangement::Dynamic);
     let mut header = vec![
-        Cell::new("Market").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Shares").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Invested").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Profit").add_attribute(Attribute::Bold).fg(Color::Cyan),
-        Cell::new("Profit %").add_attribute(Attribute::Bold).fg(Color::Cyan),
+        Cell::new("Market")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
+        Cell::new("Shares")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
+        Cell::new("Invested")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
+        Cell::new("Profit")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
+        Cell::new("Profit %")
+            .add_attribute(Attribute::Bold)
+            .fg(Color::Cyan),
     ];
     if show_user {
-        header.push(Cell::new("User").add_attribute(Attribute::Bold).fg(Color::Cyan));
+        header.push(
+            Cell::new("User")
+                .add_attribute(Attribute::Bold)
+                .fg(Color::Cyan),
+        );
     }
     table.add_row(header);
     table.column_mut(0).expect("Market column").set_constraint(
@@ -196,7 +246,8 @@ pub fn print_positions_table(
     for group in &visible {
         for (index, p) in group.iter().enumerate() {
             let market = if index == 0 {
-                titles.and_then(|m| m.get(&p.contract_id))
+                titles
+                    .and_then(|m| m.get(&p.contract_id))
                     .map(String::as_str)
                     .unwrap_or(&p.contract_id)
             } else {
@@ -224,11 +275,13 @@ pub fn print_positions_table(
     let totals = |groups: &[&Vec<ContractMetric>]| -> (f64, f64, usize) {
         groups.iter().flat_map(|g| g.iter()).fold(
             (0.0, 0.0, 0),
-            |(invested, profit, missing), p| (
-                invested + p.invested.unwrap_or_default(),
-                profit + p.profit.unwrap_or_default(),
-                missing + usize::from(p.invested.is_none() || p.profit.is_none()),
-            ),
+            |(invested, profit, missing), p| {
+                (
+                    invested + p.invested.unwrap_or_default(),
+                    profit + p.profit.unwrap_or_default(),
+                    missing + usize::from(p.invested.is_none() || p.profit.is_none()),
+                )
+            },
         )
     };
     let mut add_total = |label: &str, groups: &[&Vec<ContractMetric>]| {

@@ -45,12 +45,12 @@ pub enum UserCommands {
         username_or_id: String,
     },
     /// Get user portfolio metrics
-    Portfolio { 
+    Portfolio {
         /// Username or ID of the user
-        user_id: Option<String> 
+        user_id: Option<String>,
     },
     /// Get user portfolio history
-    History { 
+    History {
         /// Username or ID of the user
         user_id: Option<String>,
         #[arg(short, long, default_value = "allTime")]
@@ -114,7 +114,7 @@ pub enum MarketCommands {
         ids: Vec<String>,
     },
     /// Get market positions
-    Positions { 
+    Positions {
         market_id: String,
         #[arg(short, long)]
         top: Option<i32>,

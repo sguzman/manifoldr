@@ -1,15 +1,16 @@
 mod api;
 mod cli;
 mod logging;
-mod utils;
 #[cfg(test)]
-mod tests;
+#[path = "tests.rs"]
+mod fixture_tests;
+mod utils;
 
-use anyhow::{bail, Result};
+use crate::api::client::{ManifoldClient, is_not_found};
+use crate::api::models::ContractMetric;
+use anyhow::{Result, bail};
 use clap::Parser;
 use cli::{BetCommands, Cli, Commands, MarketCommands, UserCommands};
-use crate::api::client::{is_not_found, ManifoldClient};
-use crate::api::models::ContractMetric;
 use dotenvy::dotenv;
 use tracing::{info, instrument};
 
@@ -56,7 +57,11 @@ async fn handle_user_command(
     match command {
         UserCommands::Me => {
             let user = client.get_me().await?;
-            if json { print_json(&user)?; } else { utils::print_user_table(&user); }
+            if json {
+                print_json(&user)?;
+            } else {
+                utils::print_user_table(&user);
+            }
         }
         UserCommands::Get { username_or_id } => {
             let user = match client.get_user_by_username(&username_or_id).await {
@@ -64,7 +69,11 @@ async fn handle_user_command(
                 Err(err) if is_not_found(&err) => client.get_user_by_id(&username_or_id).await?,
                 Err(err) => return Err(err),
             };
-            if json { print_json(&user)?; } else { utils::print_user_table(&user); }
+            if json {
+                print_json(&user)?;
+            } else {
+                utils::print_user_table(&user);
+            }
         }
         UserCommands::Portfolio { user_id } => {
             let id = resolve_user_id(&client, user_id).await?;
@@ -73,10 +82,23 @@ async fn handle_user_command(
         UserCommands::History { user_id, period } => {
             let id = resolve_user_id(&client, user_id).await?;
             let history = client.get_user_portfolio_history(&id, &period).await?;
-            if json { print_json(&history)?; } else { utils::print_portfolio_history_table(&history); }
+            if json {
+                print_json(&history)?;
+            } else {
+                utils::print_portfolio_history_table(&history);
+            }
         }
-        UserCommands::Positions { user_id, limit, watch, max_width, display_limit, all } => {
-            if limit <= 0 { bail!("Position limit must be positive"); }
+        UserCommands::Positions {
+            user_id,
+            limit,
+            watch,
+            max_width,
+            display_limit,
+            all,
+        } => {
+            if limit <= 0 {
+                bail!("Position limit must be positive");
+            }
             if watch.is_some_and(|interval| interval < 2) {
                 bail!("--watch must be at least 2 seconds to respect API rate limits");
             }
@@ -85,9 +107,13 @@ async fn handle_user_command(
                 // Never print terminal control sequences in JSON mode.
                 if watch.is_some() && !json {
                     print!("\x1B[2J\x1B[1;1H");
-                    eprintln!("Positions for {id} | {}", chrono::Local::now().format("%H:%M:%S"));
+                    eprintln!(
+                        "Positions for {id} | {}",
+                        chrono::Local::now().format("%H:%M:%S")
+                    );
                 }
-                let fetch_limit = limit.max(display_limit.unwrap_or(0).min(i32::MAX as usize) as i32);
+                let fetch_limit =
+                    limit.max(display_limit.unwrap_or(0).min(i32::MAX as usize) as i32);
                 info!(id, fetch_limit, "Fetching positions");
                 let response = client.get_user_contract_metrics(&id, fetch_limit).await?;
                 if json {
@@ -101,10 +127,18 @@ async fn handle_user_command(
                         };
                         profit(b).total_cmp(&profit(a))
                     });
-                    let titles = response.contracts.into_iter()
+                    let titles = response
+                        .contracts
+                        .into_iter()
                         .map(|m| (m.id, m.question))
                         .collect();
-                    utils::print_positions_table(&groups, Some(&titles), max_width, display_limit, all);
+                    utils::print_positions_table(
+                        &groups,
+                        Some(&titles),
+                        max_width,
+                        display_limit,
+                        all,
+                    );
                 }
                 if let Some(seconds) = watch {
                     tokio::time::sleep(std::time::Duration::from_secs(seconds)).await;
@@ -124,25 +158,64 @@ async fn handle_market_command(
     json: bool,
 ) -> Result<()> {
     match command {
-        MarketCommands::List { limit, sort, order, before } => {
-            if !(1..=1000).contains(&limit) { bail!("Market limit must be between 1 and 1000"); }
-            let markets = client.list_markets(Some(limit), sort.as_deref(), order.as_deref(), before.as_deref()).await?;
-            if json { print_json(&markets)?; } else { utils::print_markets_table(&markets); }
+        MarketCommands::List {
+            limit,
+            sort,
+            order,
+            before,
+        } => {
+            if !(1..=1000).contains(&limit) {
+                bail!("Market limit must be between 1 and 1000");
+            }
+            let markets = client
+                .list_markets(
+                    Some(limit),
+                    sort.as_deref(),
+                    order.as_deref(),
+                    before.as_deref(),
+                )
+                .await?;
+            if json {
+                print_json(&markets)?;
+            } else {
+                utils::print_markets_table(&markets);
+            }
         }
-        MarketCommands::Search { term, limit, sort, filter } => {
-            if limit <= 0 { bail!("Search limit must be positive"); }
-            let markets = client.search_markets(&term, Some(limit), sort.as_deref(), filter.as_deref()).await?;
-            if json { print_json(&markets)?; } else { utils::print_markets_table(&markets); }
+        MarketCommands::Search {
+            term,
+            limit,
+            sort,
+            filter,
+        } => {
+            if limit <= 0 {
+                bail!("Search limit must be positive");
+            }
+            let markets = client
+                .search_markets(&term, Some(limit), sort.as_deref(), filter.as_deref())
+                .await?;
+            if json {
+                print_json(&markets)?;
+            } else {
+                utils::print_markets_table(&markets);
+            }
         }
         MarketCommands::Get { id_or_slug, slug } => {
-            let market = if slug { client.get_market_by_slug(&id_or_slug).await? }
-                else { client.get_market_by_id(&id_or_slug).await? };
+            let market = if slug {
+                client.get_market_by_slug(&id_or_slug).await?
+            } else {
+                client.get_market_by_id(&id_or_slug).await?
+            };
             print_json(&market)?;
         }
         MarketCommands::Probabilities { ids } => {
             print_json(&client.market_probabilities(&ids).await?)?;
         }
-        MarketCommands::Positions { market_id, top, bottom, max_width } => {
+        MarketCommands::Positions {
+            market_id,
+            top,
+            bottom,
+            max_width,
+        } => {
             let positions = client.get_market_positions(&market_id, top, bottom).await?;
             if json {
                 print_json(&positions)?;
@@ -150,7 +223,10 @@ async fn handle_market_command(
                 let mut groups_map: std::collections::HashMap<String, Vec<ContractMetric>> =
                     std::collections::HashMap::new();
                 for position in positions {
-                    groups_map.entry(position.user_id.clone()).or_default().push(position);
+                    groups_map
+                        .entry(position.user_id.clone())
+                        .or_default()
+                        .push(position);
                 }
                 let mut groups: Vec<Vec<ContractMetric>> = groups_map.into_values().collect();
                 groups.sort_by(|a, b| {
@@ -173,18 +249,39 @@ async fn handle_bet_command(
     json: bool,
 ) -> Result<()> {
     match command {
-        BetCommands::Place { market_id, amount, outcome, execute } => {
+        BetCommands::Place {
+            market_id,
+            amount,
+            outcome,
+            execute,
+        } => {
             if execute {
                 eprintln!("Executing a REAL trade on Manifold.");
             } else {
                 eprintln!("SIMULATION ONLY: Manifold dryRun=true; no bet will be placed.");
             }
-            print_json(&client.place_bet(&market_id, amount, &outcome, execute).await?)?;
+            print_json(
+                &client
+                    .place_bet(&market_id, amount, &outcome, execute)
+                    .await?,
+            )?;
         }
-        BetCommands::List { user_id, market_id, limit } => {
-            if limit <= 0 { bail!("Bet limit must be positive"); }
-            let bets = client.list_bets(user_id.as_deref(), market_id.as_deref(), Some(limit)).await?;
-            if json { print_json(&bets)?; } else { utils::print_bets_table(&bets); }
+        BetCommands::List {
+            user_id,
+            market_id,
+            limit,
+        } => {
+            if limit <= 0 {
+                bail!("Bet limit must be positive");
+            }
+            let bets = client
+                .list_bets(user_id.as_deref(), market_id.as_deref(), Some(limit))
+                .await?;
+            if json {
+                print_json(&bets)?;
+            } else {
+                utils::print_bets_table(&bets);
+            }
         }
     }
     Ok(())

@@ -1,382 +1,105 @@
 # Manifoldr
 
-`manifoldr` is a Rust command-line client for the Manifold Markets API. It is intended for terminal-first workflows where you want typed API access, readable tabular output for common lookups, and raw JSON for operations where the full response matters.
+Rust terminal client for the [Manifold Markets API](https://docs.manifold.markets/api), with tables for interactive inspection and JSON for scripts.
 
-The project currently focuses on three areas:
+**Status (October 2026):** Maintenance revival underway. See [ROADMAP.md](ROADMAP.md) for implemented and planned work and [CHANGELOG.md](CHANGELOG.md) for behavioral changes. The public Manifold API is marked alpha; response schemas may change.
 
-- user lookups and portfolio inspection
-- market discovery and market detail retrieval
-- bet placement and bet listing
+## Build
 
-## What The Project Does
+Rust stable (edition 2024) and network access are required. The binary is CLI-only and runs on Linux.
 
-The binary talks directly to `https://api.manifold.markets/v0` using `reqwest`, parses responses into Rust types with `serde`, and exposes those operations as a `clap`-based CLI.
+    git clone https://github.com/sguzman/manifoldr
+    cd manifoldr
+    cargo build --locked --release
+    cargo run --locked -- --help
 
-Today the CLI supports:
+Install from the source directory using cargo if preferred:
 
-- authenticated user inspection with `user me`
-- public user lookup by username or id
-- portfolio and portfolio history retrieval
-- user and market position inspection
-- market listing and search
-- full market retrieval by id or slug
-- bet placement
-- bet listing filtered by user and/or market
+    cargo install --locked --path .
 
-Output is intentionally mixed by use case:
+## Authentication
 
-- table output for browsing lists and common summaries
-- **real-time monitoring** of positions with `--watch`
-- pretty JSON for responses where the full payload is useful
+Public market data requires no API key. To use authenticated commands, create a Manifold API key in your Manifold profile settings. Configure it locally with `MANIFOLD_API_KEY` (preferred) or `API_KEY`.
 
-## Usage Examples
+    export MANIFOLD_API_KEY="YOUR_API_KEY"
 
-### User Commands
+The CLI also reads `.env` through `dotenvy`. The file is ignored by Git. Never paste keys into issues, command logs, shell history, or commits. Passing `--api-key` directly is supported for compatibility, but the environment variable is safer because CLI arguments can be visible to other processes.
 
-```bash
-# Get your own profile
-manifoldr user me
+## Commands
 
-# See your current positions (auto-detects ID from API key)
-manifoldr user positions
+Examples use the installed `manifoldr` binary. During development, prefix commands with `cargo run --locked --`.
 
-# Monitor your positions in real-time (refreshes every 5s)
-manifoldr user positions --watch 5
+| Command | Purpose |
+| --- | --- |
+| `manifoldr user me` | Authenticated user profile |
+| `manifoldr user get USERNAME_OR_ID` | Public profile |
+| `manifoldr user portfolio [USERNAME_OR_ID]` | Live portfolio JSON |
+| `manifoldr user history [USERNAME_OR_ID] --period allTime` | Portfolio time series |
+| `manifoldr user positions [USERNAME_OR_ID] --limit 25` | Positions with API-reported P/L |
+| `manifoldr user positions --watch 10` | Refresh positions every 10 seconds |
+| `manifoldr market list --limit 20` | Recently created markets |
+| `manifoldr market search "AI safety" --limit 20` | Search markets |
+| `manifoldr market get MARKET_ID` | Full market JSON |
+| `manifoldr market get MARKET_SLUG --slug` | Get market by URL slug |
+| `manifoldr market probabilities MARKET_ID [MARKET_ID ...]` | Bulk probability JSON (1–100 IDs) |
+| `manifoldr market positions MARKET_ID --top 20` | Market positions |
+| `manifoldr bet list --user-id USER_ID` | Recent bets |
+| `manifoldr bet place MARKET_ID 5 YES` | **Simulate** a binary bet |
 
-# View your profit history over time
-manifoldr user history
-```
+### Real trading is opt-in
 
-### Market Commands
+`bet place` **simulates by default**, sending Manifold's documented `dryRun: true`. No order is placed unless you explicitly append `--execute`:
 
-```bash
-# Search for markets
-manifoldr market search "will AI"
+    manifoldr bet place MARKET_ID 5 YES --execute
 
-# See top holders for a market
-manifoldr market positions [MARKET_ID]
-```
+That command **places a real bet** using your authenticated account. This interface supports `YES` and `NO` outcomes for binary markets; passing another outcome or an invalid amount is rejected before contacting Manifold. The client does not automatically retry POST requests, because repeating a request can create a duplicate order. Always confirm account, market ID, and amount before using `--execute`.
 
-### Bet Commands
+### JSON output and monitoring
 
-```bash
-# List your recent trades
-manifoldr bet list --user-id [USER_ID]
+Use `--json` for machine-readable output on commands otherwise displayed as tables:
 
-# Place a bet
-manifoldr bet place [MARKET_ID] 50 YES
-```
+    manifoldr --json market search "AI" --limit 5
+    manifoldr --json user positions USERNAME
+    manifoldr --json bet list --limit 10
 
-## Features
+Commands that already return rich JSON (such as `market get` and `user portfolio`) remain JSON regardless of `--json`. The watch command in JSON mode emits a sequence of pretty-printed JSON documents, **not** one valid JSON array or NDJSON stream; avoid using `--watch` when piping into a JSON parser.
 
-- async CLI built on `tokio`
-- typed API client in `src/api/client.rs`
-- response models in `src/api/models.rs`
-- environment-variable and flag-based API key support
-- `.env` loading via `dotenvy`
-- console tracing plus structured JSON log files
-- small deserialization tests to catch model drift early
+`--watch` requires an interval of at least 2 seconds. For low-bandwidth or unstable connections, prefer 10–30 seconds. Manifold publishes a limit of 500 API requests per minute per IP; do not attempt to circumvent it.
 
-## Requirements
+### Portfolio accounting caveat
 
-- Rust toolchain
-- network access to the Manifold API
-- an API key for authenticated endpoints such as `user me` and `bet place`
-
-## Installation
-
-Clone the repository and build it with Cargo:
-
-```bash
-cargo build
-```
-
-For a release build:
-
-```bash
-cargo build --release
-```
-
-Run the binary directly from Cargo during development:
-
-```bash
-cargo run -- --help
-```
-
-## Authentication And Environment
-
-The CLI accepts an API key in two ways:
-
-- `--api-key <KEY>`
-- environment variables loaded from the shell or `.env`
-
-Environment handling currently works with:
-
-- `MANIFOLD_API_KEY`
-- `API_KEY`
-
-`MANIFOLD_API_KEY` is the documented CLI environment variable because it is wired directly into `clap`. `API_KEY` is also accepted by the runtime fallback in `main.rs`.
-
-Example `.env`:
-
-```dotenv
-MANIFOLD_API_KEY=your_manifold_api_key_here
-```
-
-Or:
-
-```dotenv
-API_KEY=your_manifold_api_key_here
-```
-
-## Quick Start
-
-Show top-level help:
-
-```bash
-cargo run -- --help
-```
-
-Fetch the authenticated user:
-
-```bash
-cargo run -- user me
-```
-
-Look up a public user:
-
-```bash
-cargo run -- user get alice
-```
-
-List recent markets:
-
-```bash
-cargo run -- market list --limit 20
-```
-
-Search markets:
-
-```bash
-cargo run -- market search "AI safety" --limit 10
-```
-
-Get a market by slug:
-
-```bash
-cargo run -- market get some-market-slug --slug
-```
-
-Place a bet:
-
-```bash
-cargo run -- bet place <MARKET_ID> 50 YES
-```
-
-## Command Reference
-
-Top-level command groups:
-
-- `user`
-- `market`
-- `bet`
-
-### `user`
-
-Operations for user data, portfolio state, and positions.
-
-Commands:
-
-- `manifoldr user me`
-  Returns information about the authenticated user and prints it as a table.
-- `manifoldr user get <USERNAME_OR_ID>`
-  Looks up a user by username or by id. The current implementation guesses id-vs-username based on string length.
-- `manifoldr user portfolio <USER_ID>`
-  Fetches live portfolio metrics and prints pretty JSON.
-- `manifoldr user history <USER_ID> [--period <PERIOD>]`
-  Fetches portfolio history and prints a table. Default period is `allTime`.
-- `manifoldr user positions <USER_ID> [--limit <N>]`
-  Fetches the user's contract metrics and prints positions in a table. Default limit is `10`.
-
-### `market`
-
-Operations for discovering markets and inspecting specific contracts.
-
-Commands:
-
-- `manifoldr market list [--limit <N>] [--sort <SORT>] [--order <ORDER>] [--before <CURSOR>]`
-  Lists markets and prints a compact table.
-- `manifoldr market search <TERM> [--limit <N>] [--sort <SORT>] [--filter <FILTER>]`
-  Searches markets by text query and prints a table.
-- `manifoldr market get <ID_OR_SLUG> [--slug]`
-  Fetches a full market object and prints pretty JSON. With `--slug`, the argument is treated as a slug instead of a market id.
-- `manifoldr market positions <MARKET_ID> [--top <N>] [--bottom <N>]`
-  Fetches position data for a market and prints a table.
-
-### `bet`
-
-Operations for placing bets and reviewing existing bets.
-
-Commands:
-
-- `manifoldr bet place <MARKET_ID> <AMOUNT> <OUTCOME>`
-  Places a bet and prints the API response as pretty JSON.
-- `manifoldr bet list [--user-id <USER_ID>] [--market-id <MARKET_ID>] [--limit <N>]`
-  Lists bets and prints them in a table. Default limit is `10`.
-
-## Output Behavior
-
-The CLI uses helper functions in `src/utils.rs` to render common entities as terminal tables:
-
-- users
-- markets
-- bets
-- portfolio history
-- positions
-
-Endpoints that return richer objects and where schema fidelity is useful currently print pretty JSON instead:
-
-- `user portfolio`
-- `market get`
-- `bet place`
-
-This split makes the tool practical both for interactive use and for inspecting raw API responses during development.
-
-## Logging
-
-Logging is initialized at startup in `src/logging.rs`.
-
-Behavior:
-
-- pretty human-readable logs are emitted to the console
-- JSON logs are written to `logs/manifoldr.log` with daily rotation
-- log filtering is controlled by `RUST_LOG`
-
-Example:
-
-```bash
-RUST_LOG=debug cargo run -- market list
-```
+Position **shares are share counts, not a current market payout valuation**. The CLI displays the API's `invested`, `profit`, and `profitPercent` values rather than estimating P/L from counts. Aggregated totals sum reported position metrics; percentages in the footer are computed from those aggregate amounts. Total rows are for positions retrieved in the current API response, not necessarily the complete account portfolio. Use `--all` to include closed/zero-share positions; `--display-limit` limits printed groups only. Do not treat these tables as financial statements.
 
 ## Development
 
-Useful commands:
+Run:
 
-```bash
-cargo fmt
-cargo check
-cargo test
-cargo run -- --help
-```
+    cargo fmt --all -- --check
+    cargo clippy --locked --all-targets -- -D warnings
+    cargo test --locked --all-targets
 
-Current tests live in `src/tests.rs` and focus on deserializing representative API payloads into the Rust model types.
+GitHub Actions runs the same offline checks on pushes to `main` and pull requests. It includes a non-blocking, public, read-only smoke query to catch API changes. CI never submits real orders and does not require an API key.
 
-## Project Layout
+Source layout:
 
-This is a single binary crate with a small, direct structure:
+- `src/cli/mod.rs`: clap command and argument definitions
+- `src/api/client.rs`: HTTP client, retry/timeout policy, endpoint calls
+- `src/api/models.rs`: serde wire models
+- `src/main.rs`: command dispatch
+- `src/utils.rs`: terminal tables and position summaries
+- `src/tests.rs` and `fixtures/`: offline regression tests
+- `src/logging.rs`: console tracing and rotated JSON logs
 
-```text
-.
-├── Cargo.toml
-├── Cargo.lock
-├── README.md
-└── src
-    ├── main.rs
-    ├── cli
-    │   └── mod.rs
-    ├── api
-    │   ├── client.rs
-    │   ├── mod.rs
-    │   └── models.rs
-    ├── logging.rs
-    ├── utils.rs
-    └── tests.rs
-```
+Console logging is controlled by `RUST_LOG`. File logs appear under `logs/` and are Git-ignored.
 
-### File-By-File
+Manifold documentation: https://docs.manifold.markets/api
 
-`Cargo.toml`
+## Known limitations
 
-- crate metadata
-- dependency list
-- Rust edition declaration
+- Incomplete endpoint coverage, no WebSocket client or persistent offline cache yet.
+- User identifiers are attempted as usernames first, then as IDs only on HTTP 404.
+- API schema changes can still break parsing; please retain non-sensitive fixture samples for regressions.
+- Only binary YES/NO bets are exposed in this CLI; advanced orders, cancellation and multi-answer trading are not yet implemented.
+- No independent portfolio price oracle or per-asset/accounting reconciliation.
 
-`src/main.rs`
-
-- application entrypoint
-- `.env` loading
-- logging initialization
-- CLI parsing
-- API client construction
-- command dispatch for `user`, `market`, and `bet`
-
-`src/cli/mod.rs`
-
-- top-level `Cli` struct
-- `Commands`, `UserCommands`, `MarketCommands`, and `BetCommands`
-- argument and flag definitions via `clap`
-
-`src/api/mod.rs`
-
-- small module barrel that re-exports `ManifoldClient`
-
-`src/api/client.rs`
-
-- HTTP client setup
-- authorization header handling
-- generic `GET` and `POST` helpers
-- concrete API methods for each supported endpoint
-
-`src/api/models.rs`
-
-- Rust data models for API responses
-- serde attributes for camelCase payload mapping
-- types such as `User`, `LiteMarket`, `FullMarket`, `Bet`, `PortfolioMetrics`, and `ContractMetric`
-
-`src/utils.rs`
-
-- terminal formatting helpers
-- `comfy-table` rendering for common result sets
-
-`src/logging.rs`
-
-- tracing subscriber setup
-- console and file log layers
-- environment-driven filtering with `RUST_LOG`
-
-`src/tests.rs`
-
-- lightweight unit tests covering model deserialization
-
-## Internal Architecture
-
-The code is organized in a straightforward flow:
-
-1. `clap` parses the command line into typed enums in `src/cli/mod.rs`.
-2. `main.rs` loads configuration and constructs `ManifoldClient`.
-3. Command handlers call the appropriate API method.
-4. Responses are either formatted into tables through `src/utils.rs` or emitted as pretty JSON.
-
-This keeps the API layer separate from presentation logic and makes it relatively easy to add new Manifold endpoints without touching unrelated parts of the codebase.
-
-## Current Limitations
-
-- command coverage is intentionally partial and does not expose the full Manifold API
-- some output is table-oriented rather than machine-stable JSON
-- `user get` uses a simple string-length heuristic to distinguish ids from usernames
-- test coverage is currently limited to model deserialization
-- API behavior depends on the current Manifold API surface and may require updates if the upstream schema changes
-
-## Extension Points
-
-If you want to grow the project, the natural places are:
-
-- add new typed models in `src/api/models.rs`
-- add endpoint methods in `src/api/client.rs`
-- add a new `clap` subcommand in `src/cli/mod.rs`
-- wire the command into the dispatcher in `src/main.rs`
-- add formatter helpers in `src/utils.rs` if the new command should render tables
-
-## Status
-
-The project is already usable as a focused Manifold Markets CLI, especially for interactive inspection and simple trading workflows. The main gaps are breadth of endpoint coverage, more consistent machine-readable output modes, and broader tests around API error handling and response-shape drift.
+See [ROADMAP.md](ROADMAP.md), [SECURITY.md](SECURITY.md) and [CHANGELOG.md](CHANGELOG.md).
