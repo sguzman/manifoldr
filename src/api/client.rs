@@ -136,9 +136,13 @@ impl ManifoldClient {
 
     /// All public users, paged by the final user's ID from the previous page.
     pub async fn list_users(&self, limit: i32, before: Option<&str>) -> Result<Vec<User>> {
-        if !(1..=1000).contains(&limit) { bail!("User limit must be between 1 and 1000"); }
+        if !(1..=1000).contains(&limit) {
+            bail!("User limit must be between 1 and 1000");
+        }
         let mut query = vec![("limit", limit.to_string())];
-        if let Some(cursor) = before { query.push(("before", cursor.to_owned())); }
+        if let Some(cursor) = before {
+            query.push(("before", cursor.to_owned()));
+        }
         self.get("users", Some(&query)).await
     }
 
@@ -246,7 +250,8 @@ impl ManifoldClient {
         sort: Option<&str>,
         filter: Option<&str>,
     ) -> Result<Vec<LiteMarket>> {
-        self.search_markets_with_cursor(term, limit, sort, filter, None).await
+        self.search_markets_with_cursor(term, limit, sort, filter, None)
+            .await
     }
 
     /// For deep pagination, use sort=newest and beforeTime=last.createdTime.
@@ -271,7 +276,9 @@ impl ManifoldClient {
         if let Some(s) = filter {
             query.push(("filter", s.to_owned()));
         }
-        if let Some(n) = before_time { query.push(("beforeTime", n.to_string())); }
+        if let Some(n) = before_time {
+            query.push(("beforeTime", n.to_string()));
+        }
         self.get("search-markets", Some(&query)).await
     }
 
@@ -284,7 +291,9 @@ impl ManifoldClient {
     }
 
     pub async fn market_probability(&self, id: &str) -> Result<serde_json::Value> {
-        if id.trim().is_empty() { bail!("Market ID cannot be empty"); }
+        if id.trim().is_empty() {
+            bail!("Market ID cannot be empty");
+        }
         self.get(&format!("market/{id}/prob"), None).await
     }
 
@@ -330,7 +339,8 @@ impl ManifoldClient {
         market_id: Option<&str>,
         limit: Option<i32>,
     ) -> Result<Vec<Bet>> {
-        self.list_bets_with_cursor(user_id, market_id, limit, None, None).await
+        self.list_bets_with_cursor(user_id, market_id, limit, None, None)
+            .await
     }
 
     /// Bet ID cursors: before returns older bets, after returns newer bets.
@@ -342,8 +352,12 @@ impl ManifoldClient {
         before: Option<&str>,
         after: Option<&str>,
     ) -> Result<Vec<Bet>> {
-        if before.is_some() && after.is_some() { bail!("Use only one of before or after"); }
-        if let Some(n) = limit { if !(1..=1000).contains(&n) { bail!("Bet limit must be between 1 and 1000"); } }
+        if before.is_some() && after.is_some() {
+            bail!("Use only one of before or after");
+        }
+        if limit.is_some_and(|n| !(1..=1000).contains(&n)) {
+            bail!("Bet limit must be between 1 and 1000");
+        }
         let mut query = Vec::new();
         if let Some(id) = user_id {
             query.push(("userId", id.to_owned()));
@@ -354,8 +368,12 @@ impl ManifoldClient {
         if let Some(n) = limit {
             query.push(("limit", n.to_string()));
         }
-        if let Some(id) = before { query.push(("before", id.to_owned())); }
-        if let Some(id) = after { query.push(("after", id.to_owned())); }
+        if let Some(id) = before {
+            query.push(("before", id.to_owned()));
+        }
+        if let Some(id) = after {
+            query.push(("after", id.to_owned()));
+        }
         self.get("bets", Some(&query)).await
     }
 }

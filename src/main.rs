@@ -2,12 +2,12 @@ mod cli;
 mod logging;
 mod utils;
 
-use manifoldr::api::client::{ManifoldClient, is_not_found};
-use manifoldr::api::models::ContractMetric;
 use anyhow::{Result, bail};
 use clap::Parser;
 use cli::{BetCommands, Cli, Commands, MarketCommands, TopicCommands, UserCommands};
 use dotenvy::dotenv;
+use manifoldr::api::client::{ManifoldClient, is_not_found};
+use manifoldr::api::models::ContractMetric;
 use tracing::{info, instrument};
 
 #[tokio::main]
@@ -54,8 +54,13 @@ async fn handle_user_command(
     match command {
         UserCommands::List { limit, before } => {
             let users = client.list_users(limit, before.as_deref()).await?;
-            if json { print_json(&users)?; }
-            else { for user in &users { println!("{}\t{}\t{}", user.id, user.username, user.name); } }
+            if json {
+                print_json(&users)?;
+            } else {
+                for user in &users {
+                    println!("{}\t{}\t{}", user.id, user.username, user.name);
+                }
+            }
         }
         UserCommands::Me => {
             let user = client.get_me().await?;
@@ -203,7 +208,13 @@ async fn handle_market_command(
                 bail!("Search limit must be positive");
             }
             let markets = client
-                .search_markets_with_cursor(&term, Some(limit), sort.as_deref(), filter.as_deref(), before_time)
+                .search_markets_with_cursor(
+                    &term,
+                    Some(limit),
+                    sort.as_deref(),
+                    filter.as_deref(),
+                    before_time,
+                )
                 .await?;
             if json {
                 print_json(&markets)?;
@@ -292,7 +303,13 @@ async fn handle_bet_command(
                 bail!("Bet limit must be positive");
             }
             let bets = client
-                .list_bets_with_cursor(user_id.as_deref(), market_id.as_deref(), Some(limit), before.as_deref(), after.as_deref())
+                .list_bets_with_cursor(
+                    user_id.as_deref(),
+                    market_id.as_deref(),
+                    Some(limit),
+                    before.as_deref(),
+                    after.as_deref(),
+                )
                 .await?;
             if json {
                 print_json(&bets)?;

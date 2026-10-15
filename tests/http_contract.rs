@@ -37,7 +37,9 @@ async fn receive_request(stream: &mut TcpStream) -> String {
 }
 
 async fn mock_server(responses: Vec<(&'static str, &'static str)>) -> (String, Requests) {
-    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind local server");
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind local server");
     let address = listener.local_addr().unwrap();
     let requests = Arc::new(Mutex::new(Vec::new()));
     let shared = Arc::clone(&requests);
@@ -50,7 +52,10 @@ async fn mock_server(responses: Vec<(&'static str, &'static str)>) -> (String, R
                 "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
                 body.len()
             );
-            stream.write_all(reply.as_bytes()).await.expect("write response");
+            stream
+                .write_all(reply.as_bytes())
+                .await
+                .expect("write response");
             stream.shutdown().await.expect("close response");
         }
     });
@@ -85,7 +90,10 @@ async fn search_cursor_requires_newest_and_sends_before_time() {
     let (url, requests) = mock_server(vec![("200 OK", "[]")]).await;
     let client = ManifoldClient::with_base_url(None, &url).unwrap();
     assert!(
-        client.search_markets_with_cursor("rust", Some(10), None, None, Some(123)).await.is_err()
+        client
+            .search_markets_with_cursor("rust", Some(10), None, None, Some(123))
+            .await
+            .is_err()
     );
     assert!(request_lines(&requests).is_empty());
     let results = client
@@ -103,8 +111,10 @@ async fn search_cursor_requires_newest_and_sends_before_time() {
 async fn bet_cursor_sends_expected_query() {
     let (url, requests) = mock_server(vec![("200 OK", "[]")]).await;
     let client = ManifoldClient::with_base_url(None, &url).unwrap();
-    let results = client.list_bets_with_cursor(Some("user1"), None, Some(20), Some("bet1"), None)
-        .await.unwrap();
+    let results = client
+        .list_bets_with_cursor(Some("user1"), None, Some(20), Some("bet1"), None)
+        .await
+        .unwrap();
     assert!(results.is_empty());
     let line = &request_lines(&requests)[0];
     assert!(line.contains("userId=user1"));
@@ -118,7 +128,10 @@ async fn single_market_probability_uses_documented_path() {
     let client = ManifoldClient::with_base_url(None, &url).unwrap();
     let response: Value = client.market_probability("market1").await.unwrap();
     assert_eq!(response["prob"], 0.61);
-    assert_eq!(request_lines(&requests), ["GET /v0/market/market1/prob HTTP/1.1"]);
+    assert_eq!(
+        request_lines(&requests),
+        ["GET /v0/market/market1/prob HTTP/1.1"]
+    );
 }
 
 #[tokio::test]
@@ -136,10 +149,12 @@ async fn transient_get_uses_bounded_retry() {
 
 #[tokio::test]
 async fn dry_run_posts_once_even_on_server_error() {
-    let (url, requests) =
-        mock_server(vec![("502 Bad Gateway", r#"{"error":"gateway"}"#)]).await;
+    let (url, requests) = mock_server(vec![("502 Bad Gateway", r#"{"error":"gateway"}"#)]).await;
     let client = ManifoldClient::with_base_url(None, &url).unwrap();
-    let error = client.place_bet("market1", 5.0, "YES", false).await.unwrap_err();
+    let error = client
+        .place_bet("market1", 5.0, "YES", false)
+        .await
+        .unwrap_err();
     assert!(!is_not_found(&error));
     let all = requests.lock().unwrap();
     assert_eq!(all.len(), 1, "POST must never be retried");

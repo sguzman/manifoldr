@@ -1,6 +1,6 @@
-use manifoldr::api::models::*;
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::{Attribute, Cell, Color, ContentArrangement, Table};
+use manifoldr::api::models::*;
 
 pub fn print_user_table(user: &User) {
     let mut table = Table::new();
