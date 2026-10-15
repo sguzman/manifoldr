@@ -89,6 +89,7 @@ pub struct SearchFilters<'a> {
     pub creator_id: Option<&'a str>,
 }
 
+#[derive(Clone)]
 pub struct ManifoldClient {
     client: Client,
     base_url: String,
