@@ -65,6 +65,29 @@ mod tests {
     }
 
     #[test]
+    fn latest_market_prob_alias_is_deserialized() {
+        let market: LiteMarket = serde_json::from_value(json!({
+            "id": "m1", "creatorId": "c", "creatorUsername": "someone",
+            "creatorName": "Creator", "question": "Question?",
+            "outcomeType": "BINARY", "mechanism": "cpmm-1",
+            "isResolved": false, "prob": 0.73
+        })).unwrap();
+        assert_eq!(market.probability, Some(0.73));
+    }
+
+    #[test]
+    fn portfolio_cash_metrics_are_optional() {
+        let value = json!({
+            "investmentValue": 20.0, "balance": 4.0, "totalDeposits": 100.0,
+            "loanTotal": 10.0, "timestamp": 123, "userId": "u",
+            "cashBalance": 2.0, "cashInvestmentValue": 3.0
+        });
+        let portfolio: PortfolioMetrics = serde_json::from_value(value).unwrap();
+        assert_eq!(portfolio.cash_balance, Some(2.0));
+        assert!(portfolio.spice_balance.is_none());
+    }
+
+    #[test]
     fn validation_rejects_invalid_trade_inputs() {
         for amount in [0.0, -10.0, f64::NAN, f64::INFINITY] {
             assert!(validate_bet(amount, "YES").is_err());

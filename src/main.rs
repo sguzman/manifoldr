@@ -33,7 +33,10 @@ fn print_json<T: serde::Serialize>(value: &T) -> Result<()> {
     Ok(())
 }
 
-async fn resolve_user_id(client: &ManifoldClient, identifier: Option<String>) -> Result<String> {
+async fn resolve_user_id(client: &ManifoldClient, identifier: Option<String>, direct_id: bool) -> Result<String> {
+    if direct_id {
+        return Ok(identifier.ok_or_else(|| anyhow::anyhow!("Explicit user ID required"))?);
+    }
     if let Some(identifier) = identifier {
         match client.get_user_by_username(&identifier).await {
             Ok(user) => Ok(user.id),
@@ -88,12 +91,12 @@ async fn handle_user_command(
                 utils::print_user_table(&user);
             }
         }
-        UserCommands::Portfolio { user_id } => {
-            let id = resolve_user_id(&client, user_id).await?;
+        UserCommands::Portfolio { user_id, id: direct_id } => {
+            let id = resolve_user_id(&client, user_id, direct_id).await?;
             print_json(&client.get_user_portfolio(&id).await?)?;
         }
-        UserCommands::History { user_id, period } => {
-            let id = resolve_user_id(&client, user_id).await?;
+        UserCommands::History { user_id, period, id: direct_id } => {
+            let id = resolve_user_id(&client, user_id, direct_id).await?;
             let history = client.get_user_portfolio_history(&id, &period).await?;
             if json {
                 print_json(&history)?;
@@ -103,6 +106,7 @@ async fn handle_user_command(
         }
         UserCommands::Positions {
             user_id,
+            id: direct_id,
             limit,
             offset,
             order,
@@ -118,7 +122,7 @@ async fn handle_user_command(
             if watch.is_some_and(|interval| interval < 2) {
                 bail!("--watch must be at least 2 seconds to respect API rate limits");
             }
-            let id = resolve_user_id(&client, user_id).await?;
+            let id = resolve_user_id(&client, user_id, direct_id).await?;
             loop {
                 // Never print terminal control sequences in JSON mode.
                 if watch.is_some() && !json {

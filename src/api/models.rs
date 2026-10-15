@@ -37,6 +37,7 @@ pub struct LiteMarket {
     pub url: Option<String>,
     pub outcome_type: String,
     pub mechanism: String,
+    #[serde(alias = "prob")]
     pub probability: Option<f64>,
     pub pool: Option<serde_json::Value>,
     pub volume: Option<f64>,
@@ -108,6 +109,10 @@ pub struct PortfolioMetrics {
     pub balance: f64,
     pub total_deposits: f64,
     pub loan_total: f64,
+    pub cash_investment_value: Option<f64>,
+    pub cash_balance: Option<f64>,
+    pub spice_balance: Option<f64>,
+    pub total_cash_deposits: Option<f64>,
     pub timestamp: i64,
     pub profit: Option<f64>,
     pub user_id: String,

@@ -63,6 +63,9 @@ pub enum UserCommands {
     Portfolio {
         /// Username or ID of the user
         user_id: Option<String>,
+        /// Treat the argument as an immutable user ID
+        #[arg(long, requires = "user_id")]
+        id: bool,
     },
     /// Get user portfolio history
     History {
@@ -70,6 +73,8 @@ pub enum UserCommands {
         user_id: Option<String>,
         #[arg(short, long, default_value = "allTime")]
         period: String,
+        #[arg(long, requires = "user_id")]
+        id: bool,
     },
     /// Get user's current positions
     Positions {
@@ -77,6 +82,9 @@ pub enum UserCommands {
         user_id: Option<String>,
         #[arg(short, long, default_value_t = 10)]
         limit: i32,
+        /// Treat the argument as an immutable user ID
+        #[arg(long, requires = "user_id")]
+        id: bool,
         /// Number of contracts to skip in server-side pagination
         #[arg(long, default_value_t = 0)]
         offset: u32,
