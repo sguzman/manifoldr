@@ -287,17 +287,27 @@ async fn handle_market_command(
             sort,
             filter,
             before_time,
+            offset,
+            contract_type,
+            topic_slug,
+            creator_id,
         } => {
             if limit <= 0 {
                 bail!("Search limit must be positive");
             }
             let markets = client
-                .search_markets_with_cursor(
+                .search_markets_advanced(
                     &term,
-                    Some(limit),
-                    sort.as_deref(),
-                    filter.as_deref(),
-                    before_time,
+                    manifoldr::api::client::SearchFilters {
+                        limit: Some(limit),
+                        sort: sort.as_deref(),
+                        filter: filter.as_deref(),
+                        before_time,
+                        offset,
+                        contract_type: contract_type.as_deref(),
+                        topic_slug: topic_slug.as_deref(),
+                        creator_id: creator_id.as_deref(),
+                    },
                 )
                 .await?;
             if json {

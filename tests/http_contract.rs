@@ -446,3 +446,25 @@ async fn invalid_sale_inputs_fail_before_post() {
     }
     assert!(request_lines(&requests).is_empty());
 }
+
+
+#[tokio::test]
+async fn search_filters_encode_topics_creator_type_and_offset() {
+    use manifoldr::api::client::SearchFilters;
+    let (url, requests) = mock_server(vec![("200 OK", "[]")]).await;
+    let client = ManifoldClient::with_base_url(None, &url).unwrap();
+    let markets = client.search_markets_advanced("rust", SearchFilters {
+        limit: Some(10), offset: 20, contract_type: Some("BINARY"),
+        topic_slug: Some("economics"), creator_id: Some("user1"),
+        ..SearchFilters::default()
+    }).await.unwrap();
+    assert!(markets.is_empty());
+    let line = &request_lines(&requests)[0];
+    for key in ["offset=20", "contractType=BINARY", "topicSlug=economics", "creatorId=user1"] {
+        assert!(line.contains(key), "{key} missing from {line}");
+    }
+    assert!(client.search_markets_advanced("", SearchFilters {
+        sort: Some("newest"), before_time: Some(123), offset: 10, ..SearchFilters::default()
+    }).await.is_err());
+    assert_eq!(request_lines(&requests).len(), 1);
+}

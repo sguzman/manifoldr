@@ -183,6 +183,18 @@ pub enum MarketCommands {
         /// Unix milliseconds of last result; requires --sort newest
         #[arg(long)]
         before_time: Option<i64>,
+        /// Offset (maximum 1000), incompatible with beforeTime
+        #[arg(long, default_value_t = 0, conflicts_with = "before_time")]
+        offset: u32,
+        /// Filter to a contract type such as BINARY
+        #[arg(long)]
+        contract_type: Option<String>,
+        /// Filter by topic slug
+        #[arg(long)]
+        topic_slug: Option<String>,
+        /// Filter by immutable creator ID
+        #[arg(long)]
+        creator_id: Option<String>,
     },
     /// Get a specific market
     Get {

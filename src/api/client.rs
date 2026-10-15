@@ -70,6 +70,19 @@ pub struct BetFilters<'a> {
     pub order: Option<&'a str>,
 }
 
+/// Extended documented search filters and page controls.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct SearchFilters<'a> {
+    pub limit: Option<i32>,
+    pub sort: Option<&'a str>,
+    pub filter: Option<&'a str>,
+    pub before_time: Option<i64>,
+    pub offset: u32,
+    pub contract_type: Option<&'a str>,
+    pub topic_slug: Option<&'a str>,
+    pub creator_id: Option<&'a str>,
+}
+
 pub struct ManifoldClient {
     client: Client,
     base_url: String,
@@ -374,27 +387,52 @@ impl ManifoldClient {
         filter: Option<&str>,
         before_time: Option<i64>,
     ) -> ApiResult<Vec<LiteMarket>> {
-        if before_time.is_some() && sort != Some("newest") {
+        self.search_markets_advanced(
+            term,
+            SearchFilters {
+                limit, sort, filter, before_time,
+                ..SearchFilters::default()
+            },
+        ).await
+    }
+
+    /// Max 1000 offset; for deeper searches use newest + beforeTime.
+    pub async fn search_markets_advanced(
+        &self,
+        term: &str,
+        filters: SearchFilters<'_>,
+    ) -> ApiResult<Vec<LiteMarket>> {
+        if filters.before_time.is_some() && filters.sort != Some("newest") {
             return Err(ApiError::InvalidInput(
                 "beforeTime is only supported with sort=newest".into(),
             ));
         }
-        if let Some(n) = limit {
-            bounded_limit(n, "Search limit")?;
+        if filters.before_time.is_some() && filters.offset != 0 {
+            return Err(ApiError::InvalidInput(
+                "beforeTime and offset cannot be combined".into(),
+            ));
+        }
+        if filters.offset > 1000 {
+            return Err(ApiError::InvalidInput("Search offset must be <= 1000".into()));
+        }
+        if let Some(limit) = filters.limit {
+            bounded_limit(limit, "Search limit")?;
         }
         let mut query = vec![("term", term.to_owned())];
-        if let Some(n) = limit {
-            query.push(("limit", n.to_string()));
+        for (name, value) in [
+            ("sort", filters.sort),
+            ("filter", filters.filter),
+            ("contractType", filters.contract_type),
+            ("topicSlug", filters.topic_slug),
+            ("creatorId", filters.creator_id),
+        ] {
+            if let Some(value) = value {
+                query.push((name, value.to_owned()));
+            }
         }
-        if let Some(s) = sort {
-            query.push(("sort", s.to_owned()));
-        }
-        if let Some(s) = filter {
-            query.push(("filter", s.to_owned()));
-        }
-        if let Some(n) = before_time {
-            query.push(("beforeTime", n.to_string()));
-        }
+        if let Some(limit) = filters.limit { query.push(("limit", limit.to_string())); }
+        if filters.offset != 0 { query.push(("offset", filters.offset.to_string())); }
+        if let Some(ms) = filters.before_time { query.push(("beforeTime", ms.to_string())); }
         self.get("search-markets", Some(&query)).await
     }
 
