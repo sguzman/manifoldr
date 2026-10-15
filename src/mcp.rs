@@ -8,7 +8,7 @@ use axum::{
     middleware::{self, Next}, response::{IntoResponse, Response}, routing::get,
 };
 use rmcp::{
-    handler::server::wrapper::Parameters, model::CallToolResult, schemars::JsonSchema,
+    handler::server::wrapper::Parameters, model::CallToolResult, schemars::{self, JsonSchema},
     tool, tool_router,
     transport::streamable_http_server::{
         StreamableHttpService, StreamableHttpServerConfig,
