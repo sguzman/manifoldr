@@ -156,7 +156,6 @@ mod tests {
     }
 }
 
-
 #[cfg(test)]
 mod integration_tests {
     use super::run_at;
@@ -173,24 +172,31 @@ mod integration_tests {
                 let (stream, _) = listener.accept().await.unwrap();
                 let mut socket = accept_async(stream).await.unwrap();
                 let first = socket.next().await.unwrap().unwrap();
-                let Message::Text(body) = first else { panic!("expected subscribe") };
+                let Message::Text(body) = first else {
+                    panic!("expected subscribe")
+                };
                 let command: serde_json::Value = serde_json::from_str(&body).unwrap();
                 assert_eq!(command["type"], "subscribe");
                 assert_eq!(command["topics"][0], "global/new-bet");
                 if attempt == 0 {
                     socket.close(None).await.unwrap();
                 } else {
-                    socket.send(Message::Text(
-                        r#"{"type":"broadcast","topic":"global/new-bet","data":{"id":"test"}}"#.into()
-                    )).await.unwrap();
+                    socket
+                        .send(Message::Text(
+                            r#"{"type":"broadcast","topic":"global/new-bet","data":{"id":"test"}}"#
+                                .into(),
+                        ))
+                        .await
+                        .unwrap();
                     let _ = socket.next().await;
                 }
             }
         });
         let result = tokio::time::timeout(
             std::time::Duration::from_secs(6),
-            run_at(&endpoint, vec!["global/new-bet".into()], 1)
-        ).await;
+            run_at(&endpoint, vec!["global/new-bet".into()], 1),
+        )
+        .await;
         assert!(result.is_ok(), "reconnection timed out");
         result.unwrap().unwrap();
         server.await.unwrap();

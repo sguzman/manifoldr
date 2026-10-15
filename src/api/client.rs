@@ -390,10 +390,14 @@ impl ManifoldClient {
         self.search_markets_advanced(
             term,
             SearchFilters {
-                limit, sort, filter, before_time,
+                limit,
+                sort,
+                filter,
+                before_time,
                 ..SearchFilters::default()
             },
-        ).await
+        )
+        .await
     }
 
     /// Max 1000 offset; for deeper searches use newest + beforeTime.
@@ -413,7 +417,9 @@ impl ManifoldClient {
             ));
         }
         if filters.offset > 1000 {
-            return Err(ApiError::InvalidInput("Search offset must be <= 1000".into()));
+            return Err(ApiError::InvalidInput(
+                "Search offset must be <= 1000".into(),
+            ));
         }
         if let Some(limit) = filters.limit {
             bounded_limit(limit, "Search limit")?;
@@ -430,9 +436,15 @@ impl ManifoldClient {
                 query.push((name, value.to_owned()));
             }
         }
-        if let Some(limit) = filters.limit { query.push(("limit", limit.to_string())); }
-        if filters.offset != 0 { query.push(("offset", filters.offset.to_string())); }
-        if let Some(ms) = filters.before_time { query.push(("beforeTime", ms.to_string())); }
+        if let Some(limit) = filters.limit {
+            query.push(("limit", limit.to_string()));
+        }
+        if filters.offset != 0 {
+            query.push(("offset", filters.offset.to_string()));
+        }
+        if let Some(ms) = filters.before_time {
+            query.push(("beforeTime", ms.to_string()));
+        }
         self.get("search-markets", Some(&query)).await
     }
 
