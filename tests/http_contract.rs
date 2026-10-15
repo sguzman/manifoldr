@@ -492,3 +492,60 @@ async fn search_filters_encode_topics_creator_type_and_offset() {
     );
     assert_eq!(request_lines(&requests).len(), 1);
 }
+
+
+fn unique_cache_dir() -> std::path::PathBuf {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+    std::env::temp_dir().join(format!("manifoldr-test-{}-{now}", std::process::id()))
+}
+
+#[tokio::test]
+async fn public_cache_serves_second_request_without_network() {
+    let user = r#"[{"id":"u1","createdTime":10,"name":"Tester","username":"test",
+        "url":"https://manifold.markets/test","balance":1,"totalDeposits":2}]"#;
+    let (url, requests) = mock_server(vec![("200 OK", user)]).await;
+    let dir = unique_cache_dir();
+    let mut client = ManifoldClient::with_base_url(None, &url).unwrap();
+    client.configure_public_cache(dir.clone(), std::time::Duration::from_secs(60), false);
+    let result = client.list_users(1, None).await.unwrap();
+    assert_eq!(result[0].id, "u1");
+    let second = tokio::time::timeout(std::time::Duration::from_millis(600),
+        client.list_users(1, None)).await.unwrap().unwrap();
+    assert_eq!(second[0].id, "u1");
+    assert_eq!(request_lines(&requests).len(), 1, "unexpected second HTTP fetch");
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[tokio::test]
+async fn offline_cache_reads_expired_data_and_rejects_misses_or_writes() {
+    let (url, requests) = mock_server(vec![("200 OK", "[]")]).await;
+    let dir = unique_cache_dir();
+    let mut online = ManifoldClient::with_base_url(None, &url).unwrap();
+    online.configure_public_cache(dir.clone(), std::time::Duration::from_secs(0), false);
+    online.list_users(2, None).await.unwrap();
+    let mut offline = ManifoldClient::with_base_url(None, &url).unwrap();
+    offline.configure_public_cache(dir.clone(), std::time::Duration::from_secs(0), true);
+    assert!(offline.list_users(2, None).await.unwrap().is_empty());
+    assert!(matches!(offline.list_users(3, None).await.unwrap_err(), ApiError::OfflineMiss { .. }));
+    assert!(matches!(offline.get_me().await.unwrap_err(), ApiError::OfflineMiss { .. }));
+    assert!(matches!(offline.place_bet("m1", 5.0, "YES", false).await.unwrap_err(),
+        ApiError::OfflineWrite { .. }));
+    assert_eq!(request_lines(&requests).len(), 1, "offline mode contacted network");
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[tokio::test]
+async fn short_cache_ttl_forces_network_refresh() {
+    let (url, requests) = mock_server(vec![
+        ("200 OK", "[]"),
+        ("200 OK", "[]")
+    ]).await;
+    let dir = unique_cache_dir();
+    let mut client = ManifoldClient::with_base_url(None, &url).unwrap();
+    client.configure_public_cache(dir.clone(), std::time::Duration::from_secs(0), false);
+    client.list_users(1, None).await.unwrap();
+    client.list_users(1, None).await.unwrap();
+    assert_eq!(request_lines(&requests).len(), 2);
+    std::fs::remove_dir_all(dir).unwrap();
+}

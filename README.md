@@ -153,6 +153,20 @@ Version 0.2.0 is the published Rust CLI/library stabilization release. The [Linu
 
 This release does **not** yet include a persistent local REST cache or historical synchronization engine; a stream can already be recorded to NDJSON via shell redirection.
 
+## Public API caching and offline mode (development branch)
+
+The current `main` branch now implements a **public-only on-disk GET cache**. The published v0.2.0 binary predates this feature; it will be available in the next release. The CLI caches allowlisted public reads by default under `$XDG_CACHE_HOME/manifoldr` (or `~/.cache/manifoldr`) for 60 seconds. Repeated requests with matching endpoints and query parameters can be answered without redownloading.
+
+    manifoldr market list --limit 20
+    manifoldr --offline market list --limit 20
+    manifoldr --cache-ttl 300 market search "AI" --limit 10
+    manifoldr --cache-dir /home/user/market-cache --offline topic list
+    manifoldr --no-cache market list --limit 20
+
+`--offline` never accesses the API, serves snapshots regardless of age, and reports an explicit cache miss if an endpoint or parameter set has never been fetched. It also prohibits live WebSocket streaming and trading HTTP requests. Cached responses can be stale and **must not be interpreted as live prices**. Trading commands remain network-only; normal read-only endpoints use their usual fresh HTTP requests when caches expire.
+
+Only explicitly allowlisted **public** GET responses (markets, market lookup/probabilities, users and topics) are persisted. Balances, private portfolios, positions, betting history, API credentials, and write responses are **never cached**. No snapshot is downloaded in the background; each API request populates at most one entry.
+
 ## Development
 
 Run:

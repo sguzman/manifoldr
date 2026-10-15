@@ -39,7 +39,7 @@ Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for 
 ## P2 — Usability and real-time functionality
 
 - [x] WebSocket streaming and connection re-establishment (local reconnect test and strict CI verified)
-- [ ] Local caching, incremental sync and offline history
+- [ ] Local caching, incremental sync and offline history (public GET cache and strict offline mode implemented on main; historical synchronization still future work)
 - [ ] Reliable portfolio valuation for multi-outcome, mana/cash and loan cases
 - [x] Market search filters and shell completions (fish/bash/zsh; strict CI passed)
 - [ ] Document stable machine-readable JSON schemas

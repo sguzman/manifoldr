@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased (after v0.2.0)
+
+- Opt-in library cache configuration and a default 60-second public-read cache for CLI use, respecting XDG paths.
+- Strict `--offline` mode with no network I/O, explicit cache misses, and support for expired snapshots.
+- `--no-cache`, `--cache-dir`, `--cache-ttl` flags and offline tests.
+- Private and authenticated account data, bets, positions and all mutations are excluded from the persistent cache.
+
+
+
 ## 0.2.0 — released (2026-10-15)
 
 - Added public real-time WebSocket subscriptions with keepalive pings, resubscription, bounded backoff and newline-delimited JSON output.
