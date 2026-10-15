@@ -58,6 +58,9 @@ Examples use the installed `manifoldr` binary. During development, prefix comman
 | `manifoldr topic list [--before-time UNIX_MILLISECONDS]` | Browse public topics (JSON) |
 | `manifoldr topic get TOPIC_SLUG` | Retrieve public topic (JSON) |
 | `manifoldr user get USER_ID --id` | Fetch a user directly by immutable ID |
+| `manifoldr user portfolio USER_ID --id` | Resolve portfolio directly by immutable ID |
+| `manifoldr user history USER_ID --id --period weekly` | Historical portfolio by immutable ID |
+| `manifoldr user positions USER_ID --id --limit 25` | Positions by immutable ID |
 | `manifoldr user me` | Authenticated user profile |
 | `manifoldr user get USERNAME_OR_ID` | Public profile |
 | `manifoldr user portfolio [USERNAME_OR_ID]` | Live portfolio JSON |
@@ -71,6 +74,7 @@ Examples use the installed `manifoldr` binary. During development, prefix comman
 | `manifoldr market sell MARKET_ID --outcome NO --all` | Preview selling all NO shares; requires `--execute` to submit |
 | `manifoldr market list --user-id USER_ID --group-id TOPIC_ID` | Filter market listing by creator and topic |
 | `manifoldr market search "AI safety" --limit 20` | Search markets |
+| `manifoldr market search "AI" --topic-slug technology --contract-type BINARY --offset 20` | Filter search by topic, type and page |
 | `manifoldr market search "AI" --sort newest --before-time 1706000000000` | Deep search pagination by creation timestamp |
 | `manifoldr market probability MARKET_ID` | One market's current probability |
 | `manifoldr market get MARKET_ID` | Full market JSON |
@@ -123,6 +127,28 @@ Position **shares are share counts, not a current market payout valuation**. The
 
 For `market list`, pass `--before` with the final market ID of the prior page. `user list` and `bet list` similarly use entity ID cursors. For `market search`, the API instead requires `--sort newest --before-time` with the last returned market's `createdTime` in milliseconds; it cannot be used with other sort modes. For `topic list`, `--before-time` is a Unix millisecond timestamp. Portfolio positions use numeric `--offset`, `--order lastBetTime|profit`, and optional `--per-answer`. Portfolio history uses `--period daily|weekly|monthly|allTime` and does **not** support pagination in the documented API. These commands fetch one page or period, not the entire account history automatically.
 
+## Live event streaming
+
+Manifoldr now provides a read-only WebSocket client using Manifold's documented event protocol:
+
+    manifoldr stream --topic global/new-bet
+    manifoldr stream --topic global/updated-contract --count 10
+    manifoldr stream --topic contract/MARKET_ID --topic global/new-contract
+
+The output is **NDJSON**: one compact JSON object per broadcast line. This can be redirected to a local file for later parsing. The client sends protocol keepalive pings every 30 seconds, automatically reconnects and resubscribes after drops, and uses a bounded 1–32 second reconnect delay. Ctrl+C exits. The stream does not send account credentials or issue trades; live server compatibility can change independently of the local WebSocket tests.
+
+## Shell completions
+
+    manifoldr completions fish > manifoldr.fish
+    manifoldr completions bash > manifoldr.bash
+    manifoldr completions zsh > _manifoldr
+
+## Building release artifacts
+
+Version 0.2.0 is the Rust CLI/library stabilization milestone. The [Linux Binary workflow](.github/workflows/release.yml) builds a release-mode x86-64 GNU/Linux binary, archives it and publishes SHA256 checksums as a workflow artifact on every main-branch push. Pushing a `v*` tag also triggers publishing to GitHub Releases. The release workflow runs offline automated tests but intentionally never executes real account writes.
+
+This release does **not** yet include a persistent local REST cache or historical synchronization engine; a stream can already be recorded to NDJSON via shell redirection.
+
 ## Development
 
 Run:
@@ -136,6 +162,7 @@ GitHub Actions runs the same offline checks on pushes to `main` and pull request
 Source layout:
 
 - `src/lib.rs`: public Rust library root
+- `src/realtime.rs`: public WebSocket subscriptions, keepalive and reconnect logic
 - `tests/http_contract.rs`: local mock-server transport tests (never connect to Manifold)
 - `src/cli/mod.rs`: clap command and argument definitions
 - `src/api/client.rs`: HTTP client, retry/timeout policy, endpoint calls

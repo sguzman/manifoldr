@@ -25,8 +25,8 @@ Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for 
 
 - [x] Split reusable API client into a library crate; CLI consumes it (further handler decomposition optional)
 - [x] Public `ApiResult`/typed `ApiError` for API callers; explicit `user get --id` supported
-- [ ] Provide explicit immutable-ID mode for portfolio/history/positions (currently username-first fallback)
-- [ ] Complete pagination/filter coverage (market, bet and user cursors; position offset/order/per-answer; market creator/topic filters implemented). Portfolio history has no documented pagination cursor.
+- [x] Provide explicit immutable-ID mode for portfolio/history/positions (`--id`)
+- [x] Implement documented pagination/filter coverage (market, bet and user cursors; position offset/order/per-answer; market and search creator/topic/type/offset filters). Portfolio history has no documented pagination cursor.
 - [x] Single and bulk market probability retrieval with structured JSON output
 - [x] Group/topic and user discovery endpoints (listing with cursors and topic by slug)
 - [x] Order inspection/cancellation and share-selling flows (all read-only or local preview by default; real cancellations and sales require `--execute`; no real writes tested)
@@ -36,12 +36,12 @@ Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for 
 
 ## P2 — Usability and real-time functionality
 
-- [ ] WebSocket streaming and connection re-establishment
+- [ ] WebSocket streaming and connection re-establishment (implemented with local reconnect test; pending strict CI)
 - [ ] Local caching, incremental sync and offline history
 - [ ] Reliable portfolio valuation for multi-outcome, mana/cash and loan cases
-- [ ] Search ergonomics, shell completions and terminal formatting options
+- [ ] Search ergonomics, shell completions and terminal formatting options (search filters and completions implemented; pending strict CI)
 - [ ] Document stable machine-readable JSON schemas
-- [ ] Release binaries for Linux, changelog, packaging and versioning policy
+- [ ] Release binaries for Linux, changelog, packaging and versioning policy (0.2.0 tagged-release workflow and main-branch binary artifacts implemented; verification pending)
 
 ## Constraints and quality gates
 

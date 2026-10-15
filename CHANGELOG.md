@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0 — release candidate (2026-10-15)
+
+- Added public real-time WebSocket subscriptions with keepalive pings, resubscription, bounded backoff and newline-delimited JSON output.
+- Added fish/bash/zsh and other shell completion generation.
+- Added immutable user-ID options to portfolio, history and positions commands.
+- Added contract type, creator ID, topic slug and offset filtering to market search.
+- Recognize the API's `prob` market field and optional cash portfolio metrics.
+- Added local WebSocket reconnection regression tests with no external network.
+- Added Linux x86-64 GNU tarball build and checksums in a GitHub Actions workflow, with tagged-release publishing support.
+
+
+
 ## Unreleased — revival work (2026-10-15)
 
 ### Added (P1 underway)
