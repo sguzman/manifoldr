@@ -2,7 +2,7 @@
 
 Rust terminal client for the [Manifold Markets API](https://docs.manifold.markets/api), with tables for interactive inspection and JSON for scripts.
 
-**Status (October 15, 2026):** [Manifoldr v0.3.0](https://github.com/sguzman/manifoldr/releases/tag/v0.3.0) is released with Linux x86-64 binaries, public-only persistent caching, strict offline mode, WebSocket streaming, a reusable Rust library, and safely opted-in trading. Both [strict Rust CI](https://github.com/sguzman/manifoldr/actions/runs/38811669977) and the [release build](https://github.com/sguzman/manifoldr/actions/runs/38811670010) passed. Incremental historical sync and complete financial reconciliation remain future enhancements.
+**Status (October 15, 2026):** [v0.3.0](https://github.com/sguzman/manifoldr/releases/tag/v0.3.0) is the latest verified published binary; **v0.4.0 is being prepared** with one stateless, shared, read-only Streamable HTTP MCP endpoint for local and LAN agents. See [MCP.md](MCP.md).
 
 ## Linux binary
 
@@ -20,6 +20,24 @@ Rust stable (edition 2024) and network access are required. The binary is CLI-on
 Install from the source directory using cargo if preferred:
 
     cargo install --locked --path .
+
+## Agent-accessible MCP (v0.4.0)
+
+One long-lived server can be shared among all local and LAN agents. It exposes
+read-only tools for popular, trending and high-volume markets, category browsing,
+search, individual market data, bulk probabilities and transparent non-personalized
+suggestions. It uses the official MCP Rust SDK and Streamable HTTP transport.
+
+    manifoldr mcp serve
+    manifoldr mcp serve --bind 0.0.0.0:8877
+
+Local MCP URL: http://127.0.0.1:8877/mcp
+
+For LAN agents, replace the loopback address with this host's actual LAN IP.
+The repo includes a systemd --user unit at
+[packaging/systemd/manifoldr-mcp.service](packaging/systemd/manifoldr-mcp.service).
+Deployment, tool descriptions and security details: [MCP.md](MCP.md).
+Version 0.4.0 must pass CI before its binary is published.
 
 ## Rust library
 

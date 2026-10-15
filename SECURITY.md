@@ -13,3 +13,7 @@ Manifoldr is a personal, open-source CLI, not an exchange or custody service.
 - Treat local logs, position exports and historical fixtures as private even if they do not contain your API key.
 
 For vulnerabilities involving keys or live trading, avoid publishing any sensitive reproduction details.
+
+## Shared MCP server (v0.4.0)
+
+MCP exposes public-read operations only and explicitly drops API credentials. It defaults to loopback; LAN access is opt-in through `--bind 0.0.0.0:8877`. The optional systemd example enables LAN access as requested. Any device that can reach that port can query public data without login. Keep it behind a trusted LAN/firewall, do not forward it onto the public Internet. Incoming browser Origin headers are denied unless explicitly allowlisted.

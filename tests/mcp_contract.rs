@@ -2,7 +2,10 @@
 //! They never make authenticated requests or touch live trades.
 use manifoldr::{api::client::ManifoldClient, mcp::router};
 use serde_json::{Value, json};
-use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpListener};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::TcpListener,
+};
 
 async fn fake_manifold() -> (String, tokio::task::JoinHandle<()>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -31,7 +34,11 @@ async fn streamable_http_lists_read_only_tools_and_calls_market_browse() {
     });
     let http = reqwest::Client::new();
     assert_eq!(
-        http.get(format!("{base}/healthz")).send().await.unwrap().status(),
+        http.get(format!("{base}/healthz"))
+            .send()
+            .await
+            .unwrap()
+            .status(),
         reqwest::StatusCode::OK
     );
     let protocol = "2025-11-25";
@@ -43,43 +50,82 @@ async fn streamable_http_lists_read_only_tools_and_calls_market_browse() {
             "capabilities": {}
         }
     });
-    let response = http.post(format!("{base}/mcp"))
-        .header("accept","application/json, text/event-stream")
-        .header("mcp-protocol-version",protocol)
-        .json(&initialize).send().await.unwrap();
-    assert!(response.status().is_success(), "initialize returned {}", response.status());
+    let response = http
+        .post(format!("{base}/mcp"))
+        .header("accept", "application/json, text/event-stream")
+        .header("mcp-protocol-version", protocol)
+        .json(&initialize)
+        .send()
+        .await
+        .unwrap();
+    assert!(
+        response.status().is_success(),
+        "initialize returned {}",
+        response.status()
+    );
     let init_json: Value = response.json().await.unwrap();
     assert!(init_json["result"]["capabilities"]["tools"].is_object());
-    let list = http.post(format!("{base}/mcp"))
-        .header("accept","application/json, text/event-stream")
-        .header("mcp-protocol-version",protocol)
+    let list = http
+        .post(format!("{base}/mcp"))
+        .header("accept", "application/json, text/event-stream")
+        .header("mcp-protocol-version", protocol)
         .json(&json!({"jsonrpc":"2.0","id":2,"method":"tools/list"}))
-        .send().await.unwrap();
-    assert!(list.status().is_success(), "tools/list returned {}", list.status());
+        .send()
+        .await
+        .unwrap();
+    assert!(
+        list.status().is_success(),
+        "tools/list returned {}",
+        list.status()
+    );
     let tools: Value = list.json().await.unwrap();
-    let names: Vec<&str> = tools["result"]["tools"].as_array().unwrap().iter()
-        .filter_map(|t| t["name"].as_str()).collect();
-    for expected in ["popular_markets", "trending_markets", "suggested_markets",
-                     "search_markets", "list_categories", "get_market"] {
+    let names: Vec<&str> = tools["result"]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|t| t["name"].as_str())
+        .collect();
+    for expected in [
+        "popular_markets",
+        "trending_markets",
+        "suggested_markets",
+        "search_markets",
+        "list_categories",
+        "get_market",
+    ] {
         assert!(names.contains(&expected), "missing {expected}: {names:?}");
     }
     assert!(!names.contains(&"place_bet"));
     assert!(!names.contains(&"cancel_limit_order"));
-    let response = http.post(format!("{base}/mcp"))
-        .header("accept","application/json, text/event-stream")
-        .header("mcp-protocol-version",protocol)
-        .json(&json!({"jsonrpc":"2.0","id":3,"method":"tools/call","params":{
-            "name":"popular_markets","arguments":{"limit":1}
-        }})).send().await.unwrap();
-    assert!(response.status().is_success(), "tools/call returned {}",response.status());
+    let response = http
+        .post(format!("{base}/mcp"))
+        .header("accept", "application/json, text/event-stream")
+        .header("mcp-protocol-version", protocol)
+        .json(
+            &json!({"jsonrpc":"2.0","id":3,"method":"tools/call","params":{
+                "name":"popular_markets","arguments":{"limit":1}
+            }}),
+        )
+        .send()
+        .await
+        .unwrap();
+    assert!(
+        response.status().is_success(),
+        "tools/call returned {}",
+        response.status()
+    );
     let body: Value = response.json().await.unwrap();
     assert_eq!(body["result"]["isError"], Value::Bool(false));
     assert_eq!(body["result"]["structuredContent"]["data"], json!([]));
-    let denied = http.post(format!("{base}/mcp"))
+    let denied = http
+        .post(format!("{base}/mcp"))
         .header("origin", "http://malicious.example")
         .header("accept", "application/json, text/event-stream")
         .header("mcp-protocol-version", protocol)
-        .json(&initialize).send().await.unwrap();
+        .json(&initialize)
+        .send()
+        .await
+        .unwrap();
     assert_eq!(denied.status(), reqwest::StatusCode::FORBIDDEN);
     fake.await.unwrap();
     server.abort();

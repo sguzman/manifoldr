@@ -38,6 +38,9 @@ Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for 
 
 ## P2 — Usability and real-time functionality
 
+- [x] Read-only shared MCP HTTP server with eight public discovery tools, category filters and transparent suggested ranking (local protocol integration test passed)
+- [x] Linux systemd user unit template and LAN setup instructions (repo only; requires local installation)
+
 - [x] WebSocket streaming and connection re-establishment (local reconnect test and strict CI verified)
 - [x] Persistent public GET cache and strict offline mode (v0.3.0; mock tests and CI verified)
 - [ ] Historical incremental synchronization and offline portfolio history (not implemented; do not cache private account data without a separate explicit design)

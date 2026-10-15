@@ -67,7 +67,10 @@ async fn main() -> Result<()> {
             unreachable!("handled before client initialization")
         }
         Commands::Mcp { command } => match command {
-            McpCommands::Serve { bind, allow_origins } => {
+            McpCommands::Serve {
+                bind,
+                allow_origins,
+            } => {
                 if cli.offline {
                     bail!("MCP server requires online mode; --offline is not supported");
                 }

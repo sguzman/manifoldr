@@ -53,3 +53,7 @@ One shared public cache and a global request-pacing lock limit concurrent agents
 ## Quality checks
 
 The GitHub CI tests initialization, tool discovery, invoking a read-only discovery tool and rejecting a hostile Origin using an ephemeral mock HTTP server. It never executes authenticated transactions.
+
+## Versioning
+
+The agent-facing Streamable HTTP server is introduced in Manifoldr v0.4.0. The systemd unit requires this version or newer; the published v0.3.0 binary does not support the MCP subcommand.
