@@ -15,10 +15,10 @@
 - Added regression fixtures and GitHub Actions Rust quality checks.
 - Reorganized documentation and removed committed scratch output files.
 
-### Pending verification
+### Validation
 
-- Validate the new implementation using the CI test and live public API smoke results.
-- Expand read/write endpoint coverage only after stabilization.
+- [GitHub Actions run 38796201375](https://github.com/sguzman/manifoldr/actions/runs/38796201375) passed Rust formatting, Clippy, unit tests, CLI help, and a live *public* market-list API smoke on 2026-10-15.
+- Authenticated user operations and actual trading were not exercised in CI; further API coverage and integration tests are tracked on the roadmap.
 
 ## 0.1.0 — initial codebase
 

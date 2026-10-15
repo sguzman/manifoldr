@@ -14,7 +14,9 @@ Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for 
 - [x] Add regression fixtures, offline unit tests, rustfmt/clippy/test CI
 - [x] Clean accidental generated artifacts from version control
 - [x] Rewrite README and add development/security notes
-- [ ] Verify a clean build, unit tests, and representative live read-only API calls
+- [x] Verify a clean build, unit tests, and representative live read-only API calls
+  - 2026-10-15: GitHub Actions [Rust CI run 38796201375](https://github.com/sguzman/manifoldr/actions/runs/38796201375) passed rustfmt, Clippy, unit tests, CLI help and public market-list API smoke.
+  - Authenticated portfolio commands and real order execution intentionally NOT exercised in CI.
   (Do not mark this complete until actually run and verified.)
 
 ## P1 — Expand endpoint coverage
@@ -22,7 +24,7 @@ Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for 
 - [ ] Split reusable API client into a library crate; CLI becomes a thin adapter
 - [ ] Typed errors and explicit username/ID handling throughout
 - [ ] Pagination and robust filtering for markets, bets, positions and history
-- [ ] Probability and bulk probability endpoints with structured output
+- [x] Bulk probability retrieval with structured output (`market probabilities`, 1–100 IDs); per-market probability conveniences still pending
 - [ ] Group/topic and user discovery endpoints
 - [ ] Order inspection/cancellation and share-selling flows (all safe by default)
 - [ ] Live REST compatibility fixtures; capture only non-sensitive public responses
