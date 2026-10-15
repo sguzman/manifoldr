@@ -38,14 +38,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "Manifoldr $GITHUB_REF_NAME" --generate-notes
-      - name: Publish vetted v0.2.0 release once from main
+      - name: Publish verified version once from main
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          grep -q '^version = "0.2.0"' Cargo.toml
-          if gh release view v0.2.0 >/dev/null 2>&1; then
-            echo "v0.2.0 already released; no replacement performed"
+          VERSION="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)"
+          test -n "$VERSION"
+          case "$VERSION" in
+            *[!0-9.]*|'') echo "Invalid package version"; exit 1 ;;
+          esac
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "$TAG already released; existing release will not be replaced"
           else
-            gh release create v0.2.0 dist/* --target "$GITHUB_SHA" --title "Manifoldr v0.2.0" --generate-notes
+            gh release create "$TAG" dist/* --target "$GITHUB_SHA" --title "Manifoldr $TAG" --generate-notes
           fi

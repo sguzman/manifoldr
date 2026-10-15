@@ -4,6 +4,7 @@ use clap_complete::Shell;
 #[derive(Parser, Debug)]
 #[command(name = "manifoldr")]
 #[command(about = "CLI tool for Manifold Markets", long_about = None)]
+#[command(version)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
