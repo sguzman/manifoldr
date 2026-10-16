@@ -42,10 +42,7 @@ post-MVP roadmap checkboxes remain open intentionally.
 
 ## Final release gate
 
-Release v1.0.0 only after the Rust CI and Linux Binary GitHub workflows pass
-for the version-bump commit and the GitHub Release actually contains the
-Linux x86-64 tar.gz and SHA256SUMS. Do not claim this gate passed merely
-because v0.4.0 previously passed.
+**Passed.** The [Rust CI](https://github.com/sguzman/manifoldr/actions/runs/38832539056) and [Linux Binary workflow](https://github.com/sguzman/manifoldr/actions/runs/38832538999) succeeded for commit `fec5c6991e876a2168ce3ea4ed996e6838795500`. The [v1.0.0 GitHub Release](https://github.com/sguzman/manifoldr/releases/tag/v1.0.0) was verified published with both the Linux x86-64 tar.gz and SHA256SUMS. Automated authentication and real trades were deliberately excluded.
 
 ## Upgrade an existing service
 

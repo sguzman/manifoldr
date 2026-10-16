@@ -42,8 +42,7 @@ and checksums are verified.
 
 ## v1.0.0 MVP ceremony
 
-Version manifests and release notes prepared October 15, 2026.
-Publication is performed by the release workflow only after build/tests pass.
+[v1.0.0](https://github.com/sguzman/manifoldr/releases/tag/v1.0.0) published October 15, 2026 (Mexico City time; October 16 UTC), after the [strict CI](https://github.com/sguzman/manifoldr/actions/runs/38832539056) and [Linux release workflow](https://github.com/sguzman/manifoldr/actions/runs/38832538999) succeeded. The release contains `manifoldr-linux-x86_64.tar.gz` and `SHA256SUMS`.
 The installed v0.4.0 binary and enabled service continue operating until
 the binary is upgraded and `systemctl --user restart manifoldr-mcp.service`
 is executed locally. No further `config-store` edits are part of graduation.

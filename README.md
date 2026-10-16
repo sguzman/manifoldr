@@ -2,11 +2,11 @@
 
 Rust terminal client for the [Manifold Markets API](https://docs.manifold.markets/api), with tables for interactive inspection and JSON for scripts.
 
-**Status (October 15, 2026):** Manifoldr **v1.0.0 (MVP)** is the release candidate for its supported Linux CLI, Rust API client and shared read-only MCP server. It promotes the tested v0.4.0 feature set without adding new behavior. See [MVP.md](MVP.md) for the acceptance criteria and the [MCP guide](MCP.md) for deployment.
+**Status (October 15, 2026):** Manifoldr **v1.0.0 (MVP)** is officially released with its Linux CLI, Rust API client and shared read-only MCP server. It promotes the tested v0.4.0 feature set without adding new behavior. [Strict Rust CI](https://github.com/sguzman/manifoldr/actions/runs/38832539056) and the [Linux release workflow](https://github.com/sguzman/manifoldr/actions/runs/38832538999) both passed. See [MVP.md](MVP.md) for the acceptance criteria and the [MCP guide](MCP.md) for deployment.
 
 ## Linux binary
 
-When the v1.0.0 release workflow completes successfully, download the Linux x86-64 archive and its SHA256SUMS from [releases](https://github.com/sguzman/manifoldr/releases). Verify the archive checksum before extracting. Earlier versions remain available.
+Download the [v1.0.0 Linux x86-64 binary archive](https://github.com/sguzman/manifoldr/releases/download/v1.0.0/manifoldr-linux-x86_64.tar.gz) and [SHA256SUMS](https://github.com/sguzman/manifoldr/releases/download/v1.0.0/SHA256SUMS). GitHub published both release assets after the full build/test checks passed. Verify the archive checksum before extracting. Earlier versions remain available.
 
 ## Build
 

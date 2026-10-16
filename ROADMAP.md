@@ -1,6 +1,6 @@
 # Manifoldr revival roadmap
 
-**Milestones released:** [v0.2.0](https://github.com/sguzman/manifoldr/releases/tag/v0.2.0) (revival), [v0.3.0](https://github.com/sguzman/manifoldr/releases/tag/v0.3.0) (public caching/offline), [v0.4.0](https://github.com/sguzman/manifoldr/releases/tag/v0.4.0) (centralized MCP), and **v1.0.0 MVP graduation** (release candidate; see [MVP.md](MVP.md)). Unchecked roadmap items are post-MVP scope, not unfinished MVP requirements.
+**Milestones released:** [v0.2.0](https://github.com/sguzman/manifoldr/releases/tag/v0.2.0) (revival), [v0.3.0](https://github.com/sguzman/manifoldr/releases/tag/v0.3.0) (public caching/offline), [v0.4.0](https://github.com/sguzman/manifoldr/releases/tag/v0.4.0) (centralized MCP), and **[v1.0.0 MVP graduation](https://github.com/sguzman/manifoldr/releases/tag/v1.0.0)** (verified release; see [MVP.md](MVP.md)). Unchecked roadmap items are post-MVP scope, not unfinished MVP requirements.
 
 Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for the public Manifold Markets API. Changes go directly to the default branch in coherent commits; trading remains opt-in.
 
@@ -12,7 +12,8 @@ Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for 
 - [x] Existing centralized LAN user service operational (verified from user-supplied service status, October 15, 2026)
 - [x] User service archived to `sguzman/config-store` (separate one-time authorized commit)
 - [x] SemVer 1.0.0 manifests and release-candidate documentation prepared
-- [ ] Verify strict CI and published Linux v1.0.0 binary plus SHA256SUMS (automatic release gate)
+- [x] Verify [strict CI](https://github.com/sguzman/manifoldr/actions/runs/38832539056) and [Linux release build](https://github.com/sguzman/manifoldr/actions/runs/38832538999) (both passed)
+- [x] Verify [published v1.0.0 release](https://github.com/sguzman/manifoldr/releases/tag/v1.0.0) with Linux x86-64 archive and SHA256SUMS
 
 ## P0 — Stabilize and recover (completed 2026-10-15)
 
