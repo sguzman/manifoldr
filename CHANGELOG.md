@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0 — MVP graduation (2026-10-15)
+
+- Graduated the verified v0.4.0 Linux CLI, Rust library, and centralized public read-only MCP server to the first stable semantic version. No behavioral/API changes in this promotion.
+- Formalized the MVP support boundary in [MVP.md](MVP.md): market/topic discovery, search, market detail and probabilities, non-personalized suggestions, local/LAN multi-agent MCP access, safe CLI opt-in trading, public caching and offline mode.
+- Retained strict CI and a tagged Linux release archive with checksums; documented how to restart an already-running v0.4.0 systemd user service after a local binary upgrade.
+- Explicitly excluded authenticated MCP access, production financial reconciliation, and historical synchronization from the MVP promise.
+
+
 ## 0.4.0 — MCP server released (2026-10-15)
 
 - Added a native Rust MCP Streamable HTTP server using the official rmcp SDK.
@@ -32,7 +40,7 @@
 
 
 
-## Unreleased — revival work (2026-10-15)
+## Historical revival work (2026-10-15)
 
 ### Added (P1 underway)
 

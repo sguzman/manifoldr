@@ -2,15 +2,15 @@
 
 Rust terminal client for the [Manifold Markets API](https://docs.manifold.markets/api), with tables for interactive inspection and JSON for scripts.
 
-**Status (October 15, 2026):** [Manifoldr v0.4.0](https://github.com/sguzman/manifoldr/releases/tag/v0.4.0) is released, with one shared native read-only MCP HTTP server for local and LAN agents. [Strict Rust CI](https://github.com/sguzman/manifoldr/actions/runs/38815965068) passed and the [release workflow](https://github.com/sguzman/manifoldr/actions/runs/38815965095) built and published the Linux x86-64 binary. See [MCP.md](MCP.md) for deployment.
+**Status (October 15, 2026):** Manifoldr **v1.0.0 (MVP)** is the release candidate for its supported Linux CLI, Rust API client and shared read-only MCP server. It promotes the tested v0.4.0 feature set without adding new behavior. See [MVP.md](MVP.md) for the acceptance criteria and the [MCP guide](MCP.md) for deployment.
 
 ## Linux binary
 
-Download the verified [v0.3.0 Linux x86-64 binary archive](https://github.com/sguzman/manifoldr/releases/download/v0.3.0/manifoldr-linux-x86_64.tar.gz) with its [SHA256SUMS](https://github.com/sguzman/manifoldr/releases/download/v0.3.0/SHA256SUMS). Previous releases, including v0.2.0, remain available. Verify the checksum before extracting and running.
+When the v1.0.0 release workflow completes successfully, download the Linux x86-64 archive and its SHA256SUMS from [releases](https://github.com/sguzman/manifoldr/releases). Verify the archive checksum before extracting. Earlier versions remain available.
 
 ## Build
 
-Rust stable (edition 2024) and network access are required. The binary is CLI-only and runs on Linux.
+Rust stable (edition 2024) and network access are required. The binary provides both CLI commands and an optional long-lived HTTP MCP server; Linux x86-64 is the release build target.
 
     git clone https://github.com/sguzman/manifoldr
     cd manifoldr
@@ -21,7 +21,7 @@ Install from the source directory using cargo if preferred:
 
     cargo install --locked --path .
 
-## Agent-accessible MCP (v0.4.0)
+## Agent-accessible MCP (v1.0.0)
 
 One long-lived server can be shared among all local and LAN agents. It exposes
 read-only tools for popular, trending and high-volume markets, category browsing,
@@ -37,7 +37,7 @@ For LAN agents, replace the loopback address with this host's actual LAN IP.
 The repo includes a systemd --user unit at
 [packaging/systemd/manifoldr-mcp.service](packaging/systemd/manifoldr-mcp.service).
 Deployment, tool descriptions and security details: [MCP.md](MCP.md).
-The [v0.4.0 Linux release](https://github.com/sguzman/manifoldr/releases/tag/v0.4.0) includes the server and SHA256SUMS.
+MCP first shipped in [v0.4.0](https://github.com/sguzman/manifoldr/releases/tag/v0.4.0) and is part of the v1.0.0 MVP.
 
 ## Rust library
 
@@ -165,11 +165,22 @@ The output is **NDJSON**: one compact JSON object per broadcast line. This can b
     manifoldr completions bash > manifoldr.bash
     manifoldr completions zsh > _manifoldr
 
-## Building release artifacts
+## Release and upgrade
 
-Version 0.2.0 is the published Rust CLI/library stabilization release. The [Linux Binary workflow](.github/workflows/release.yml) builds a release-mode x86-64 GNU/Linux binary, archives it and publishes SHA256 checksums as a workflow artifact on every main-branch push. The workflow publishes `v0.2.0` once after its full build/test checks pass, and newer `v*` tags trigger subsequent GitHub Releases. The release workflow runs offline automated tests but intentionally never executes real account writes.
+The v1.0.0 MVP accepts the existing supported scope: safe explicit-write CLI,
+public caching/offline reads, a reusable Rust client, read-only streaming,
+and one central read-only MCP HTTP server. The release pipeline checks
+rustfmt, strict Clippy, offline tests, command help and the optimized Linux
+binary, then publishes a checksum alongside the archive. See
+[RELEASE.md](RELEASE.md) for release policy and [MVP.md](MVP.md) for scope.
 
-This release does **not** yet include a persistent local REST cache or historical synchronization engine; a stream can already be recorded to NDJSON via shell redirection.
+After installing the v1.0.0 binary over a running v0.4.0 binary, restart
+the already-enabled service to use the newly installed executable:
+
+    systemctl --user restart manifoldr-mcp.service
+    systemctl --user is-active manifoldr-mcp.service
+
+No update is needed to the existing systemd unit in `config-store`.
 
 ## Public API caching and offline mode (v0.3.0)
 
@@ -199,6 +210,8 @@ Source layout:
 
 - `src/lib.rs`: public Rust library root
 - `src/realtime.rs`: public WebSocket subscriptions, keepalive and reconnect logic
+- `src/mcp.rs`: shared read-only Streamable HTTP MCP server and discovery tools
+- `tests/mcp_contract.rs`: MCP initialize, tool discovery, call and Origin-rejection mock HTTP tests
 - `tests/http_contract.rs`: local mock-server transport tests (never connect to Manifold)
 - `src/cli/mod.rs`: clap command and argument definitions
 - `src/api/client.rs`: HTTP client, retry/timeout policy, endpoint calls
@@ -214,10 +227,11 @@ Manifold documentation: https://docs.manifold.markets/api
 
 ## Known limitations
 
-- Incomplete endpoint coverage, no WebSocket client or persistent offline cache yet.
+- Upstream REST coverage is intentionally selective; the WebSocket client and public-only offline cache are already implemented. Historical synchronization and comprehensive offline account history are not implemented.
 - User identifiers are attempted as usernames first, then as IDs only on HTTP 404. `user get --id` bypasses username lookup.
 - API schema changes can still break parsing; please retain non-sensitive fixture samples for regressions.
 - Only binary YES/NO bets can be placed. Read-only open-limit inspection, opted-in cancellation and opted-in share sales are available; advanced order creation and multi-answer trading remain unimplemented.
 - No independent portfolio price oracle or per-asset/accounting reconciliation.
+- The central MCP HTTP server is public, read-only, and unauthenticated; LAN exposure must be limited to trusted hosts. No authenticated MCP tools or trades are exposed.
 
 See [ROADMAP.md](ROADMAP.md), [SECURITY.md](SECURITY.md) and [CHANGELOG.md](CHANGELOG.md).

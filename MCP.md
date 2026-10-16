@@ -57,3 +57,7 @@ The GitHub CI tests initialization, tool discovery, invoking a read-only discove
 ## Versioning
 
 The agent-facing Streamable HTTP server is introduced in Manifoldr v0.4.0. The systemd unit requires this version or newer; the published v0.3.0 binary does not support the MCP subcommand.
+
+## v1.0.0 MVP upgrade
+
+The v1.0.0 release stabilizes the same read-only MCP feature set introduced in v0.4.0. The existing systemd user-service unit and `/mcp` endpoint remain unchanged. Once the new binary is installed, run `systemctl --user restart manifoldr-mcp.service` to replace the still-running earlier process. Do not expose the unauthenticated endpoint outside a trusted LAN.

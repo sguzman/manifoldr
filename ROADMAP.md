@@ -1,8 +1,18 @@
 # Manifoldr revival roadmap
 
-**Milestones released:** [v0.2.0](https://github.com/sguzman/manifoldr/releases/tag/v0.2.0) (revival), [v0.3.0](https://github.com/sguzman/manifoldr/releases/tag/v0.3.0) (public caching/offline) and [v0.4.0](https://github.com/sguzman/manifoldr/releases/tag/v0.4.0) (native centralized MCP server), October 15, 2026. All have verified Linux binaries and SHA256SUMS. Remaining unchecked work is optional follow-up scope.
+**Milestones released:** [v0.2.0](https://github.com/sguzman/manifoldr/releases/tag/v0.2.0) (revival), [v0.3.0](https://github.com/sguzman/manifoldr/releases/tag/v0.3.0) (public caching/offline), [v0.4.0](https://github.com/sguzman/manifoldr/releases/tag/v0.4.0) (centralized MCP), and **v1.0.0 MVP graduation** (release candidate; see [MVP.md](MVP.md)). Unchecked roadmap items are post-MVP scope, not unfinished MVP requirements.
 
 Updated: 2026-10-15. Stewardship goal: maintain a safe, dependable Rust CLI for the public Manifold Markets API. Changes go directly to the default branch in coherent commits; trading remains opt-in.
+
+## MVP ceremony — 1.0.0
+
+- [x] Stable MVP feature boundary agreed: Linux-first Rust CLI/library plus read-only multi-agent MCP server
+- [x] Agent discovery protocol contract tests (initialize, tools/list, tools/call and Origin rejection)
+- [x] Safe CLI trade opt-in; MCP does not forward credentials or expose write tools
+- [x] Existing centralized LAN user service operational (verified from user-supplied service status, October 15, 2026)
+- [x] User service archived to `sguzman/config-store` (separate one-time authorized commit)
+- [x] SemVer 1.0.0 manifests and release-candidate documentation prepared
+- [ ] Verify strict CI and published Linux v1.0.0 binary plus SHA256SUMS (automatic release gate)
 
 ## P0 — Stabilize and recover (completed 2026-10-15)
 
