@@ -559,6 +559,15 @@ impl ManifoldClient {
                 "Supply 1 to 100 nonempty market IDs".into(),
             ));
         }
+        // Manifold's market-probs endpoint requires `ids` to decode as an array.
+        // A single ?ids=ID is decoded as a scalar string and rejected with 400.
+        // Use the documented single-market endpoint and retain the bulk
+        // response's {market_id: probabilities} shape for one ID.
+        if ids.len() == 1 {
+            let mut result = serde_json::Map::new();
+            result.insert(ids[0].clone(), self.market_probability(&ids[0]).await?);
+            return Ok(serde_json::Value::Object(result));
+        }
         let query: Vec<(&str, String)> = ids.iter().map(|id| ("ids", id.clone())).collect();
         self.get("market-probs", Some(&query)).await
     }
