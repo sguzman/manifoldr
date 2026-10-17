@@ -135,6 +135,36 @@ async fn single_market_probability_uses_documented_path() {
 }
 
 #[tokio::test]
+async fn one_market_in_bulk_probabilities_uses_single_endpoint_and_keeps_bulk_shape() {
+    // Live Chatarium MCP regression: ?ids=ONLY_ID was decoded as a string
+    // and Manifold returned HTTP 400 "Expected array, received string".
+    let (url, requests) = mock_server(vec![("200 OK", r#"{"prob":0.42}"#)]).await;
+    let client = ManifoldClient::with_base_url(None, &url).unwrap();
+    let result = client.market_probabilities(&["market1".to_owned()]).await.unwrap();
+    assert_eq!(result, serde_json::json!({"market1": {"prob": 0.42}}));
+    assert_eq!(request_lines(&requests), ["GET /v0/market/market1/prob HTTP/1.1"]);
+}
+
+#[tokio::test]
+async fn multiple_market_probabilities_keep_repeated_ids_query() {
+    let (url, requests) = mock_server(vec![(
+        "200 OK",
+        r#"{"market1":{"prob":0.42},"market2":{"prob":0.6}}"#,
+    )]).await;
+    let client = ManifoldClient::with_base_url(None, &url).unwrap();
+    let result = client
+        .market_probabilities(&["market1".to_owned(), "market2".to_owned()])
+        .await
+        .unwrap();
+    assert_eq!(result["market1"]["prob"], 0.42);
+    assert_eq!(result["market2"]["prob"], 0.6);
+    assert_eq!(
+        request_lines(&requests),
+        ["GET /v0/market-probs?ids=market1&ids=market2 HTTP/1.1"],
+    );
+}
+
+#[tokio::test]
 async fn transient_get_uses_bounded_retry() {
     let (url, requests) = mock_server(vec![
         ("503 Service Unavailable", r#"{"error":"temporary"}"#),
